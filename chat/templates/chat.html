@@ -1,23 +1,25 @@
 {% extends "base.html" %}
 {% block title %}Chat mit - {{ chat.user2.username }}{% endblock title %}
-
+{% load static %}
 {% block content %}
 <style>
+/* (wie vorher, gleiche Styles + kleine Anpassung für coin display) */
 body { margin:0; padding:0; font-family:sans-serif; height:100vh; overflow:hidden; }
 .main-layout { display:flex; height:90vh; }
 .chat-list { width:280px; border-right:1px solid #ddd; overflow-y:auto; background:#f5f5f5; }
 .chat-list h3 { padding:15px; margin:0; background:#e0e0e0; }
 .chat-item { padding:12px 15px; border-bottom:1px solid #eee; cursor:pointer; display:flex; justify-content:space-between; }
 .chat-item.active { background:#d4f5d0; }
-.chat-area { flex:1; display:flex; flex-direction:column; }
+.chat-area { flex:1; display:flex; flex-direction:column; background-color: #dddddd9c; }
+.header-row { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-bottom:1px solid #ddd; background:#fff; }
 .messages-scroll { flex:1; overflow-y:auto; padding:10px 20px 80px; display:flex; flex-direction:column; gap:10px; }
 .message { max-width:70%; padding:10px 15px; border-radius:15px; word-wrap:break-word; }
-.message-left { background:#f1f1f1; align-self:flex-start; }
-.message-right { background:#4CAF50; color:white; align-self:flex-end; }
+.message-left { background: #f1f1f1; align-self:flex-start; }
+.message-right { background: #9cbeff; color:white; align-self:flex-end; }
 .chat-input { display:flex; flex-wrap:wrap; gap:10px; padding:10px; border-top:1px solid #ddd; background:#fff; }
 .chat-input input[type="text"] { flex:1; padding:10px; border-radius:10px; border:1px solid #ccc; }
 .chat-input input[type="file"] { border:none; }
-.chat-input button { padding:10px 15px; border-radius:10px; border:none; background:#4CAF50; color:white; cursor:pointer; }
+.chat-input button { padding:10px 15px; border-radius:10px; border:none; background: #9cbeff; color:white; cursor:pointer;}
 .gif-menu {
   position:absolute; bottom:60px; left:10px; background:white; border:1px solid #ccc; padding:10px;
   border-radius:10px; width:320px; box-shadow:0 3px 10px rgba(0,0,0,0.2); display:none; max-height:300px; overflow-y:auto;
@@ -28,18 +30,27 @@ body { margin:0; padding:0; font-family:sans-serif; height:100vh; overflow:hidde
 .error-msg { color:red; font-size:13px; margin-left:10px; }
 .keygen-btn { margin:10px; background-color:#007BFF; color:white; padding:8px 12px; border-radius:8px; border:none; cursor:pointer; }
 .log-note { margin:8px 15px; font-size:12px; color:#666; }
+.file-upload-wrapper { display: flex; align-items: center; gap: 10px; }
+.file-upload-btn { background-color: #9cbeff; color: white; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; border: none; display: inline-block; }
+.file-upload-btn:hover { background-color: #9cbeff; }
+#mediaInput { display: none; }
+.file-name { font-size: 13px; color: #666; }
+
+/* coin display */
+.coin-box { display:flex; align-items:center; gap:10px; }
+.coin-count { background:#ffefc6; padding:6px 10px; border-radius:8px; font-weight:600; }
 </style>
 
-<!-- Hidden coin element, reads from ForeignKey -->
-<!-- Hidden element for JS -->
+<!-- Hidden coin element is still here as data source -->
 <div id="coinCount" style="display:none;">
-  {% if user.coinaccount_set.exists %}
-    {{ user.coinaccount_set.all.0.coins }}
+ {% with user.profile_set.first as profile %}
+    {% if profile %}
+        {{ profile.coins }}
   {% else %}
     0
   {% endif %}
+  {% endwith %}
 </div>
-
 
 <div class="main-layout">
   <div class="chat-list" id="chatList">
@@ -55,8 +66,16 @@ body { margin:0; padding:0; font-family:sans-serif; height:100vh; overflow:hidde
   </div>
 
   <div class="chat-area">
-    <button class="keygen-btn" id="generateKeysBtn">🔑 Generate / Upload Keys</button>
-    <div class="log-note">Tip: use this button to (re)generate or upload keys, useful if decryption fails.</div>
+    <div class="header-row">
+      <div>
+        <button class="keygen-btn" id="generateKeysBtn">🔑 Generate / Upload Keys</button>
+        <div class="log-note">Tipp: (Re)generate oder upload keys wenn Entschlüsselung fehlschlägt.</div>
+      </div>
+      <div class="coin-box">
+        <div>Deine Coins:</div>
+        <div id="coinDisplay" class="coin-count">0</div>
+      </div>
+    </div>
 
     <div class="messages-scroll" id="chatContainer">
       {% for message in messages %}
@@ -74,9 +93,17 @@ body { margin:0; padding:0; font-family:sans-serif; height:100vh; overflow:hidde
 
     <div class="chat-input">
       <input type="text" id="messageInput" placeholder="Schreibe eine Nachricht...">
-      <input type="file" id="mediaInput" accept="image/*">
+
+      <div class="file-upload-wrapper">
+        <label for="mediaInput" class="file-upload-btn">📎 Bild auswählen</label>
+        <input type="file" id="mediaInput" accept="image/*">
+        <span class="file-name" id="fileName"></span>
+      </div>
+
       <button id="gifShopBtn">🪙 GIFs</button>
-      <button id="sendBtn">📨</button>
+      <button id="sendBtn" title="Senden">
+        <img src="{% static 'images/flyer.png' %}" alt="Send" style=" width:40px; height:40px;">
+      </button>
 
       <div class="gif-menu" id="gifMenu"></div>
       <span class="error-msg" id="errorMsg"></span>
@@ -86,22 +113,22 @@ body { margin:0; padding:0; font-family:sans-serif; height:100vh; overflow:hidde
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-  // Chat list
+  // Chat list navigation
   const chatList = document.getElementById("chatList");
   Array.from(chatList.querySelectorAll(".chat-item")).forEach(c => {
-    c.addEventListener("click", () => window.location.href = `/chat/${c.dataset.chatId}/`);
+    c.addEventListener("click", () => window.location.href = `/chat/${c.dataset.chatId}`);
   });
 
-  // Coins
-let coinCountEl = document.getElementById("coinCount");
-let userCoins = coinCountEl ? parseInt(coinCountEl.textContent) : 0;
-console.log("User coins:", userCoins); // should now show actual coins
-
+  // Coins: initial lesen
+  let coinCountEl = document.getElementById("coinCount");
+  let userCoins = coinCountEl ? parseInt(coinCountEl.textContent || "0") : 0;
+  const coinDisplay = document.getElementById("coinDisplay");
+  coinDisplay.textContent = userCoins;
 
   const chatContainer = document.getElementById("chatContainer");
   const errorMsg = document.getElementById("errorMsg");
 
-  // WebSocket
+  // WebSocket aufsetzen
   const chatId = "{{ chat.id }}";
   const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
   const chatSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/chat/${chatId}/`);
@@ -111,47 +138,80 @@ console.log("User coins:", userCoins); // should now show actual coins
   const sendBtn = document.getElementById("sendBtn");
   const gifBtn = document.getElementById("gifShopBtn");
   const gifMenu = document.getElementById("gifMenu");
+  const fileName = document.getElementById("fileName");
 
-  // Receive messages
-  chatSocket.onmessage = function(e){
-    const data = JSON.parse(e.data);
-    if(data.error || !data.sender) return;
-    if(data.sender === "{{ user.username }}") return;
+  // WebSocket: Empfangs-Handler
+  chatSocket.onmessage = function(e) {
+    try {
+      const data = JSON.parse(e.data);
+      // Fehler vom Server
+      if (data.error) {
+        errorMsg.textContent = data.error;
+        return;
+      }
 
-    const msgEl = document.createElement("div");
-    msgEl.className = "message message-left";
-    if(data.media){
-      msgEl.innerHTML = `<img src="${data.media}" width="120"><em>${data.sender}</em>`;
-    } else {
-      msgEl.innerHTML = `<strong>${data.sender}:</strong> <span>${data.encrypted_message}</span> <em>(${data.timestamp})</em>`;
+      // Coin-Update (nur an Absender gesendet)
+      if (typeof data.coins !== "undefined") {
+        userCoins = parseInt(data.coins);
+        if (!isNaN(userCoins)) {
+          coinDisplay.textContent = userCoins;
+          if (coinCountEl) coinCountEl.textContent = userCoins;
+        }
+        errorMsg.textContent = ""; // evtl vorherige Fehler ausblenden
+        return;
+      }
+
+      // Ankommende Nachricht (Broadcast)
+      // Prüfen, ob Payload die Nachricht-Felder enthält
+      if (!data.sender) return;
+
+      // Nachricht erzeugen und hinzufügen
+      const msgEl = document.createElement("div");
+      // anhand des Senders klassifizieren
+      const isOwn = data.sender === "{{ user.username }}";
+      msgEl.className = "message " + (isOwn ? "message-right" : "message-left");
+
+      if (data.media) {
+        msgEl.innerHTML = `<img src="${data.media}" width="120"><em>${data.sender}</em> <em>(${data.timestamp})</em>`;
+      } else {
+        msgEl.innerHTML = `<strong>${data.sender}:</strong> <span>${data.encrypted_message}</span> <em>(${data.timestamp})</em>`;
+      }
+
+      chatContainer.appendChild(msgEl);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+      errorMsg.textContent = "";
+    } catch (err) {
+      console.error("WS onmessage parse error:", err);
     }
-    chatContainer.appendChild(msgEl);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
   };
 
-  // Send text or media
+  chatSocket.onopen = function() {
+    console.log("WebSocket connected");
+  };
+  chatSocket.onclose = function() {
+    console.log("WebSocket closed");
+  };
+
+  // SEND: Text oder Upload (keine lokale Anzeige, Anzeige kommt durch Server-Broadcast)
   sendBtn.addEventListener("click", () => {
     const msg = messageInput.value.trim();
     const mediaFile = mediaInput.files[0];
 
-    if(!msg && !mediaFile) return;
+    if (!msg && !mediaFile) return;
 
-    if(mediaFile){
+    errorMsg.textContent = "";
+
+    if (mediaFile) {
       const reader = new FileReader();
-      reader.onload = function(){
+      reader.onload = function() {
         const payload = {
           media: reader.result,
+          media_type: "image",
           encrypted_key_recipient: "dummy_recipient_key",
           encrypted_key_sender: "dummy_sender_key",
           iv: "dummy_iv"
         };
         chatSocket.send(JSON.stringify(payload));
-
-        const msgEl = document.createElement("div");
-        msgEl.className = "message message-right";
-        msgEl.innerHTML = `<img src="${URL.createObjectURL(mediaFile)}" width="120"><em>(Du)</em>`;
-        chatContainer.appendChild(msgEl);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
       };
       reader.readAsDataURL(mediaFile);
     } else {
@@ -162,78 +222,95 @@ console.log("User coins:", userCoins); // should now show actual coins
         iv: "dummy_iv"
       };
       chatSocket.send(JSON.stringify(payload));
-
-      const msgEl = document.createElement("div");
-      msgEl.className = "message message-right";
-      msgEl.innerHTML = `<strong>{{ user.username }}:</strong> <span>${msg}</span> <em>(jetzt)</em>`;
-      chatContainer.appendChild(msgEl);
-      chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
+    // Felder zurücksetzen (Anzeige erfolgt durch Server)
     messageInput.value = "";
     mediaInput.value = "";
+    fileName.textContent = "";
   });
 
-  messageInput.addEventListener("keyup", e => { if(e.key === "Enter") sendBtn.click(); });
+  // Enter zum Senden
+  messageInput.addEventListener("keyup", e => { if (e.key === "Enter") sendBtn.click(); });
 
-  // GIF shop
+  // GIF-Shop: lädt GIF-Liste und öffnet Menü
   gifBtn.addEventListener("click", async () => {
-    if(gifMenu.style.display === "block"){ gifMenu.style.display="none"; return; }
+    if (gifMenu.style.display === "block") { gifMenu.style.display = "none"; return; }
 
-    const res = await fetch("/api/gifs/");
-    const gifs = await res.json();
-    gifMenu.innerHTML = gifs.map(gif => `
-      <div class="gif-item" data-url="${gif.url}" data-price="${gif.price}">
-        <img src="${gif.url}" alt="${gif.name}"><span class="gif-price">🪙 ${gif.price}</span>
-      </div>
-    `).join("");
-    gifMenu.style.display = "block";
+    try {
+      const res = await fetch("/api/gifs/");
+      if (!res.ok) throw new Error("Fehler beim Laden der GIF-Liste");
+      const gifs = await res.json();
 
-    gifMenu.querySelectorAll(".gif-item").forEach(item=>{
-      item.addEventListener("click", ()=>{
-        const price = parseInt(item.dataset.price);
-        const url = item.dataset.url;
+      gifMenu.innerHTML = gifs.map(gif => `
+        <div class="gif-item" data-url="${gif.url}" data-price="${gif.price}">
+          <img src="${gif.url}" alt="${gif.name}"><span class="gif-price">🪙 ${gif.price}</span>
+        </div>
+      `).join("");
+      gifMenu.style.display = "block";
 
-        console.log("Clicked GIF:", url, "Price:", price, "User coins before:", userCoins);
+      // Klick-Handler für GIF-Items
+      gifMenu.querySelectorAll(".gif-item").forEach(item => {
+        item.addEventListener("click", async () => {
+          const price = parseInt(item.dataset.price);
+          const url = item.dataset.url;
 
-        if(userCoins < price){
-          console.error("Not enough coins!", userCoins, "<", price);
-          errorMsg.textContent = "Nicht genügend Coins!";
-          return;
-        }
+          // Client-seitige Abfrage der Coins vor dem Versuch (nur als UX-Hinweis)
+          if (userCoins < price) {
+            errorMsg.textContent = "Nicht genügend Coins!";
+            return;
+          }
 
-        fetch(url)
-          .then(res => res.blob())
-          .then(blob => {
+          // Lade das GIF, konvertiere in base64 und sende an Server.
+          errorMsg.textContent = "Sende GIF...";
+          gifMenu.style.display = "none";
+
+          try {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("Fehler beim Laden des GIFs");
+            const blob = await res.blob();
             const reader = new FileReader();
             reader.onload = function() {
               const payload = {
                 media: reader.result,
+                media_type: "gif",
+                price: price,
                 encrypted_key_recipient: "dummy_recipient_key",
                 encrypted_key_sender: "dummy_sender_key",
                 iv: "dummy_iv"
               };
+              // Senden — coin Abzug passiert serverseitig
               chatSocket.send(JSON.stringify(payload));
-              userCoins -= price;
-              if(coinCountEl) coinCountEl.textContent = userCoins;
-
-              const msgEl = document.createElement("div");
-              msgEl.className = "message message-right";
-              msgEl.innerHTML = `<img src="${url}" width="120"><em>(🪙 Geschenk!)</em>`;
-              chatContainer.appendChild(msgEl);
-              chatContainer.scrollTop = chatContainer.scrollHeight;
-
-              gifMenu.style.display="none";
-              errorMsg.textContent="";
+              // Warte auf serverseitige Bestätigung (coins update) und Broadcast der Nachricht
+              errorMsg.textContent = ""; // zurücksetzen, Server meldet ggf. Fehler
             };
             reader.readAsDataURL(blob);
-          })
-          .catch(err => {
+          } catch (err) {
             console.error("GIF fetch/load error:", err);
             errorMsg.textContent = "Fehler beim Laden der GIF-Datei!";
-          });
+          }
+        });
       });
-    });
+
+    } catch (err) {
+      console.error("GIF shop load error:", err);
+      errorMsg.textContent = "Fehler beim Laden der GIFs.";
+    }
+  });
+
+  // File input: Zeige Dateinamen
+  mediaInput.addEventListener("change", () => {
+    if (mediaInput.files.length > 0) {
+      fileName.textContent = mediaInput.files[0].name;
+    } else {
+      fileName.textContent = "";
+    }
+  });
+
+  // Keygen Button (placeholder, Verhalten wie zuvor)
+  const generateKeysBtn = document.getElementById("generateKeysBtn");
+  generateKeysBtn.addEventListener("click", () => {
+    alert("Generate/Upload keys — hier dein vorhandener Flow einbauen.");
   });
 
 });

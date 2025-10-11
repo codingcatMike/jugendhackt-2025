@@ -31,7 +31,7 @@ def chat(request, id=None):
     user = request.user
 
     # Liste aller Chats, bei denen der User beteiligt ist
-    #user_chats = Chat.objects.filter(Q(user1=user) | Q(user2=user)).order_by('-timestamp')
+    user_chats = Chat.objects.filter(Q(user1=user) | Q(user2=user))
 
     # Aktuellen Chat laden (wenn vorhanden)
     chat = get_object_or_404(Chat, id=id) if id else None
@@ -43,7 +43,7 @@ def chat(request, id=None):
     return render(request, 'chat.html', {
         "chat": chat,
         "messages": messages,
-        #"user_chats": user_chats,
+        "user_chats": user_chats,
     })
 
 
