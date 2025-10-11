@@ -13,10 +13,26 @@ class Chat(models.Model):
 class Message(models.Model):
     chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(User, on_delete=models.CASCADE)
-    content = models.TextField()  # AES-encrypted message (base64)
-    encrypted_key = models.TextField()  # AES key encrypted with recipient's public key (base64)
-    iv = models.TextField()  # AES initialization vector (base64)
+    content = models.TextField(blank=True)  # AES-encrypted text
+    media = models.FileField(upload_to='chat_media/', blank=True, null=True)  # für Bilder/GIFs
+    encrypted_key_recipient = models.TextField(blank=True)  
+    encrypted_key_sender = models.TextField(blank=True)  
+    iv = models.TextField(blank=True)  
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Message from {self.sender.username} at {self.timestamp}"
+        if self.media:
+            return f"Media message from {self.sender.username} at {self.timestamp}"
+        return f"Text message from {self.sender.username} at {self.timestamp}"
+
+
+class GIF(models.Model):
+    name = models.CharField(max_length=255)
+    file = models.FileField(upload_to='gifs/')
+    price = models.IntegerField(default=0)  # will save in MEDIA_ROOT/gifs/
+
+    def __str__(self):
+        return self.name# Create your models here.
+
+
+    

@@ -1,224 +1,220 @@
-{% extends "base.html" %}
-
-{% block title %}Chat mit - XXXX{% endblock title %}
-
-{% block content %}
-<style>
-  .chat-container {
-    max-width: 600px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .messages-scroll {
-    height: 400px;
-    overflow-y: auto;
-    padding: 10px;
-    border-radius: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    background-color: #fafafa;
-  }
-
-  .message {
-    padding: 10px 15px;
-    border-radius: 15px;
-    max-width: 70%;
-    word-wrap: break-word;
-  }
-
-  .message-left {
-    background-color: #f1f1f1;
-    align-self: flex-start;
-  }
-
-  .message-right {
-    background-color: #4CAF50;
-    color: white;
-    align-self: flex-end;
-  }
-
-  .chat-input {
-    display: flex;
-    margin-top: 20px;
-    gap: 10px;
-  }
-
-  .chat-input input {
-    flex: 1;
-    padding: 10px;
-    border-radius: 10px;
-    border: 1px solid #ccc;
-  }
-
-  .chat-input button {
-    padding: 10px 15px;
-    border-radius: 10px;
-    border: none;
-    background-color: #4CAF50;
-    color: white;
-    cursor: pointer;
-  }
-</style>
-
-<div class="chat-container">
-  <h2>Chat mit - XXXX</h2>
-
-  {% if messages %}
-  <div class="messages-scroll" id="chatContainer">
-      {% for message in messages %}
-          <div class="message {% if message.sender == user %}message-right{% else %}message-left{% endif %}" 
-               data-encrypted-message="{{ message.content }}"
-               data-encrypted-key="{{ message.encrypted_key }}"
-               data-iv="{{ message.iv }}">
-            <strong>{{ message.sender.username }}:</strong> <span class="message-text">[encrypted]</span> 
-            <em>({{ message.timestamp }})</em>
-          </div>
-      {% endfor %}
-  </div>
-  {% endif %}
-</div>
-
-{% if messages %}
-<div class="chat-input">
-  <input type="text" id="messageInput" placeholder="Schreibe eine Nachricht...">
-  <button id="sendButton">Senden</button>
-</div>
-{% endif %}
-
-<script>
-// ----- Helper functions -----
-function arrayBufferToBase64(buffer) {
-    let binary = '';
-    const bytes = new Uint8Array(buffer);
-    for (let b of bytes) binary += String.fromCharCode(b);
-    return window.btoa(binary);
-}
-
-function base64ToArrayBuffer(base64) {
-    const binary = window.atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return bytes.buffer;
-}
-
-// ----- Encrypt / Decrypt Functions -----
-async function encryptMessage(message, recipientPublicKeyBase64) {
-    const aesKey = await crypto.subtle.generateKey({name:"AES-CFB", length:256}, true, ["encrypt", "decrypt"]);
-    const iv = crypto.getRandomValues(new Uint8Array(16));
-    const enc = new TextEncoder();
-    const encryptedMessage = await crypto.subtle.encrypt({name:"AES-CFB", iv}, aesKey, enc.encode(message));
-
-    const recipientPubKey = await crypto.subtle.importKey(
-        "spki",
-        base64ToArrayBuffer(recipientPublicKeyBase64),
-        {name:"RSA-OAEP", hash:"SHA-256"},
-        false,
-        ["encrypt"]
-    );
-
-    const rawAES = await crypto.subtle.exportKey("raw", aesKey);
-    const encryptedKey = await crypto.subtle.encrypt({name:"RSA-OAEP"}, recipientPubKey, rawAES);
-
-    return {
-        encrypted_message: arrayBufferToBase64(encryptedMessage),
-        encrypted_key: arrayBufferToBase64(encryptedKey),
-        iv: arrayBufferToBase64(iv)
-    };
-}
-
-async function decryptMessage(encryptedMessage, encryptedKey, iv) {
-    const privateKeyJwk = JSON.parse(localStorage.getItem("privateKey"));
-    const privateKey = await crypto.subtle.importKey(
-        "pkcs8",
-        base64ToArrayBuffer(privateKeyJwk),
-        {name:"RSA-OAEP", hash:"SHA-256"},
-        false,
-        ["decrypt"]
-    );
-
-    const aesKeyRaw = await crypto.subtle.decrypt({name:"RSA-OAEP"}, privateKey, base64ToArrayBuffer(encryptedKey));
-    const aesKey = await crypto.subtle.importKey("raw", aesKeyRaw, {name:"AES-CFB"}, false, ["decrypt"]);
-    const decrypted = await crypto.subtle.decrypt({name:"AES-CFB", iv: base64ToArrayBuffer(iv)}, aesKey, base64ToArrayBuffer(encryptedMessage));
-
-    return new TextDecoder().decode(decrypted);
-}
-
-// ----- WebSocket -----
-const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-const chatId = {{ chat.id|default:1 }};
-const ws = new WebSocket(`${protocol}://${window.location.host}/ws/chat/${chatId}/`);
-
-const chatContainer = document.getElementById('chatContainer');
-const messageInput = document.getElementById('messageInput');
-const sendButton = document.getElementById('sendButton');
-
-function scrollToBottom() {
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-}
-
-// decrypt all existing messages on load
-async function decryptExistingMessages() {
-    const messages = chatContainer.querySelectorAll(".message");
-    for (let msgDiv of messages) {
-        const encMsg = msgDiv.dataset.encryptedMessage;
-        const encKey = msgDiv.dataset.encryptedKey;
-        const iv = msgDiv.dataset.iv;
-        try {
-            const decrypted = await decryptMessage(encMsg, encKey, iv);
-            msgDiv.querySelector(".message-text").textContent = decrypted;
-        } catch(e) {
-            msgDiv.querySelector(".message-text").textContent = "[cannot decrypt]";
+{% load static %}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Vergissmeinnicht{% endblock title %}</title>
+    <meta name="description" content="JugendHackt Projekt">
+    <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
-    }
-}
-decryptExistingMessages();
-scrollToBottom();
 
-ws.onmessage = async (ev) => {
-    const data = JSON.parse(ev.data);
-    const messageDiv = document.createElement('div');
-    messageDiv.classList.add('message');
-    messageDiv.classList.add(data.sender === '{{ user.username }}' ? 'message-right' : 'message-left');
+        body, html {
+            min-height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+            Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+            padding-top: 45px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
 
-    // temporarily show as encrypted
-    messageDiv.innerHTML = `<strong>${data.sender}:</strong> <span class="message-text">[encrypted]</span> <em>(${data.timestamp})</em>`;
-    messageDiv.dataset.encryptedMessage = data.encrypted_message;
-    messageDiv.dataset.encryptedKey = data.encrypted_key;
-    messageDiv.dataset.iv = data.iv;
-    chatContainer.appendChild(messageDiv);
+        }
+        
+        html {
+            background-image: url("{% static 'images/bg.png' %}");
+            background-repeat: repeat, no-repeat;
+            background-attachment: fixed;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            color: #897351ff;
+        }
 
-    try {
-        const decrypted = await decryptMessage(data.encrypted_message, data.encrypted_key, data.iv);
-        messageDiv.querySelector(".message-text").textContent = decrypted;
-    } catch(e) {
-        messageDiv.querySelector(".message-text").textContent = "[cannot decrypt]";
-    }
+        p {
+            color: #4c3818;
+        }
 
-    scrollToBottom();
-};
+        /* Navbar */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 20px;
+            background-color: rgba(18, 18, 18, 0.9);
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            z-index: 2;
+        }
 
-sendButton.addEventListener('click', async () => {
-    const content = messageInput.value.trim();
-    if (!content) return;
+        nav a {
+            color: #eee;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: color 0.3s;
+        }
 
-    // fetch recipient public key from your API
-    const recipientPublicKey = await fetch(`/api/get-public-key/{{ chat.user2.id }}/`).then(r=>r.text());
+        nav a:hover {
+            color: #0a84ff;
+        }
 
-    const encryptedData = await encryptMessage(content, recipientPublicKey);
-    ws.send(JSON.stringify({ 
-        sender: '{{ user.username }}', 
-        ...encryptedData
-    }));
+        /* Hero Section */
+        .hero {
+            position: relative;
+            width: 100%;
+            height: 130vh;
+            background-image: url('{% static "images/.jpg" %}');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
 
-    messageInput.value = '';
-});
+        .overlay {
+            position: absolute;
+            width: 100%;
+            min-height: 100%;
+            background: rgba(0, 0, 0, 0.25);
+            z-index: 1;
+        }
 
-messageInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendButton.click();
-});
-</script>
-{% endblock content %}
+        .content {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+        }
+
+        .auth-button {
+            background-color: #0a84ff;
+            border: none;
+            border-radius: 8px;
+            padding: 20px 50px;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 6px 12px rgba(10, 132, 255, 0.5);
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            user-select: none;
+        }
+
+        .auth-button:hover {
+            background-color: #0066cc;
+            box-shadow: 0 8px 20px rgba(0, 102, 204, 0.7);
+        }
+
+        .auth-button:active {
+            background-color: #004999;
+            box-shadow: 0 4px 8px rgba(0, 73, 153, 0.8);
+            transform: translateY(2px);
+        }
+
+        /* Login Page Styles */
+        .login-container {
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            padding: 40px 50px;
+            max-width: 400px;
+            width: 120%;
+            text-align: center;
+        }
+
+        .login-container h2 {
+            margin-bottom: 25px;
+            color: #3c2a12;
+        }
+
+        .form-group {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #4c3818;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #c9b89b;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .form-group input:focus {
+            border-color: #897351;
+            box-shadow: 0 0 0 3px rgba(137,115,81,0.3);
+        }
+
+        .login-button {
+            background-color: #897351;
+            color: white;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 40px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+        }
+
+        .login-button:hover {
+            background-color: #6e5c3f;
+        }
+
+        .login-button:active {
+            transform: translateY(2px);
+        }
+
+        .register-text {
+            margin-top: 20px;
+            font-size: 0.95rem;
+            color: #4c3818;
+        }
+
+        .register-text a {
+            color: #897351;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .register-text a:hover {
+            text-decoration: underline;
+        }
+    </style>
+
+</head>
+<body>
+    <nav>
+        <a href="{% url 'chat' %}">Messenger</a>
+        {% if not request.user.is_authenticated %}
+        <a href="{% url 'login' %}">Login</a>
+        <a href="{% url 'signup' %}">Signup</a>
+        {% else %}
+        <a href="{% url 'logoutn' %}">Logout as {{request.user.username}} {% with user.profile_set.first as profile %}
+    {% if profile %}
+        🪙 {{ profile.coins }}
+    {% else %}
+        Coins: 0
+    {% endif %}
+{% endwith %}
+</a>
+        {% endif %}
+    </nav>
+
+    {% block content %}{% endblock content %}
+
+
+</body>
+</html>

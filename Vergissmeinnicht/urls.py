@@ -17,14 +17,20 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from chat.views import *
+from django.conf import settings
+from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('check/', check, name='check'),
+    #path('check/', check, name='check'),
     path('', index, name='index'),
     path('accounts/', include('django.contrib.auth.urls')),#
     path('accounts/', include('auth_man.urls')),#
-    path('test/', test, name='test'),
+    #path('test/', test, name='test'),
     path('chat/<id>',  chat , name='chat'),
     path('chat/',  chat , name='chat'),
+    path('api/get-public-key/<id>/', get_public_key, name='get_public_key'),#
+    path("upload_public_key/", upload_public_key, name="upload_public_key"),
+    path('api/gifs/', gif_list, name='gif-list'),
 ]
 
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
