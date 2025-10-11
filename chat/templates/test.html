@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}HTML Elements Test{% endblock title %}
+
+{% block content %}
+<h1>HTML Elements Showcase</h1>
+<p>Dies ist eine Testseite, die die wichtigsten HTML-Elemente enthält, um Styles zu überprüfen.</p>
+
+<hr>
+
+<h2>Überschriften</h2>
+<h1>Heading 1</h1>
+<h2>Heading 2</h2>
+<h3>Heading 3</h3>
+<h4>Heading 4</h4>
+<h5>Heading 5</h5>
+<h6>Heading 6</h6>
+
+<hr>
+
+<h2>Textformate</h2>
+<p>Dies ist ein normaler Absatz. <strong>Fett</strong>, <em>Kursiv</em>, <u>Unterstrichen</u>, <del>Durchgestrichen</del>, <mark>Markiert</mark>.</p>
+<p>Ein <a href="#">Link</a> und ein <a href="{% url 'index' %}">interner Link</a>.</p>
+<blockquote>Dies ist ein Blockzitat zur Hervorhebung von Texten.</blockquote>
+<code>print("Hello World")</code>
+<pre>
+def hello():
+    print("Hello, world!")
+</pre>
+
+<hr>
+
+<h2>Listen</h2>
+<h3>Ungeordnete Liste</h3>
+<ul>
+  <li>Erstes Element</li>
+  <li>Zweites Element</li>
+  <li>Drittes Element</li>
+</ul>
+
+<h3>Geordnete Liste</h3>
+<ol>
+  <li>Schritt eins</li>
+  <li>Schritt zwei</li>
+  <li>Schritt drei</li>
+</ol>
+
+<h3>Definitionsliste</h3>
+<dl>
+  <dt>HTML</dt>
+  <dd>Eine Markup-Sprache für Webseiten.</dd>
+  <dt>CSS</dt>
+  <dd>Eine Stylesheet-Sprache für Layouts.</dd>
+</dl>
+
+<hr>
+
+<h2>Formulare</h2>
+<form method="post">
+  {% csrf_token %}
+  <label for="name">Name:</label>
+  <input type="text" id="name" name="name" placeholder="Gib deinen Namen ein"><br><br>
+
+  <label for="email">E-Mail:</label>
+  <input type="email" id="email" name="email" placeholder="example@mail.com"><br><br>
+
+  <label for="password">Passwort:</label>
+  <input type="password" id="password" name="password"><br><br>
+
+  <label>Geschlecht:</label>
+  <input type="radio" id="male" name="gender" value="male">
+  <label for="male">Männlich</label>
+  <input type="radio" id="female" name="gender" value="female">
+  <label for="female">Weiblich</label><br><br>
+
+  <label for="color">Lieblingsfarbe:</label>
+  <input type="color" id="color" name="color"><br><br>
+
+  <label for="age">Alter:</label>
+  <input type="number" id="age" name="age" min="0" max="100"><br><br>
+
+  <label for="range">Bewertung:</label>
+  <input type="range" id="range" name="range" min="0" max="10"><br><br>
+
+  <label for="country">Land:</label>
+  <select id="country" name="country">
+    <option>Deutschland</option>
+    <option>Österreich</option>
+    <option>Schweiz</option>
+  </select><br><br>
+
+  <label for="message">Nachricht:</label><br>
+  <textarea id="message" name="message" rows="4" cols="40" placeholder="Deine Nachricht..."></textarea><br><br>
+
+  <label>
+    <input type="checkbox" name="subscribe"> Newsletter abonnieren
+  </label><br><br>
+
+  <button type="submit">Absenden</button>
+  <button type="reset">Zurücksetzen</button>
+</form>
+
+<hr>
+
+<h2>Tabellen</h2>
+<table border="1">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Name</th>
+      <th>E-Mail</th>
+      <th>Rolle</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>Alice</td>
+      <td>alice@example.com</td>
+      <td>Admin</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Bob</td>
+      <td>bob@example.com</td>
+      <td>User</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2>Sonstige Elemente</h2>
+<details>
+  <summary>Klick mich für mehr Details</summary>
+  <p>Hier ist ein versteckter Textabschnitt!</p>
+</details>
+
+<progress value="70" max="100">70%</progress>
+<meter value="0.6">60%</meter>
+
+<br><br>
+<img src="https://via.placeholder.com/150" alt="Beispielbild">
+<figure>
+  <img src="https://via.placeholder.com/200" alt="Ein weiteres Beispielbild">
+  <figcaption>Dies ist eine Bildunterschrift.</figcaption>
+</figure>
+
+<hr>
+
+<p><a href="{% url 'index' %}">Zurück zur Startseite</a></p>
+{% endblock content %}

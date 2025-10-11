@@ -23,4 +23,8 @@ urlpatterns = [
     path('', index, name='index'),
     path('accounts/', include('django.contrib.auth.urls')),#
     path('accounts/', include('auth_man.urls')),#
+    path('test/', test, name='test'),
+    path('chat/<id>',  chat , name='chat'),
+    path('chat/',  chat , name='chat'),
 ]
+

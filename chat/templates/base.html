@@ -1,12 +1,224 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Vergissmeinnicht{% endblock title %}</title>
-</head>
-<body>
-     {% block content %}{% endblock content %}
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Chat mit - XXXX{% endblock title %}
+
+{% block content %}
+<style>
+  .chat-container {
+    max-width: 600px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .messages-scroll {
+    height: 400px;
+    overflow-y: auto;
+    padding: 10px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background-color: #fafafa;
+  }
+
+  .message {
+    padding: 10px 15px;
+    border-radius: 15px;
+    max-width: 70%;
+    word-wrap: break-word;
+  }
+
+  .message-left {
+    background-color: #f1f1f1;
+    align-self: flex-start;
+  }
+
+  .message-right {
+    background-color: #4CAF50;
+    color: white;
+    align-self: flex-end;
+  }
+
+  .chat-input {
+    display: flex;
+    margin-top: 20px;
+    gap: 10px;
+  }
+
+  .chat-input input {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+  }
+
+  .chat-input button {
+    padding: 10px 15px;
+    border-radius: 10px;
+    border: none;
+    background-color: #4CAF50;
+    color: white;
+    cursor: pointer;
+  }
+</style>
+
+<div class="chat-container">
+  <h2>Chat mit - XXXX</h2>
+
+  {% if messages %}
+  <div class="messages-scroll" id="chatContainer">
+      {% for message in messages %}
+          <div class="message {% if message.sender == user %}message-right{% else %}message-left{% endif %}" 
+               data-encrypted-message="{{ message.content }}"
+               data-encrypted-key="{{ message.encrypted_key }}"
+               data-iv="{{ message.iv }}">
+            <strong>{{ message.sender.username }}:</strong> <span class="message-text">[encrypted]</span> 
+            <em>({{ message.timestamp }})</em>
+          </div>
+      {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+{% if messages %}
+<div class="chat-input">
+  <input type="text" id="messageInput" placeholder="Schreibe eine Nachricht...">
+  <button id="sendButton">Senden</button>
+</div>
+{% endif %}
+
+<script>
+// ----- Helper functions -----
+function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    for (let b of bytes) binary += String.fromCharCode(b);
+    return window.btoa(binary);
+}
+
+function base64ToArrayBuffer(base64) {
+    const binary = window.atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes.buffer;
+}
+
+// ----- Encrypt / Decrypt Functions -----
+async function encryptMessage(message, recipientPublicKeyBase64) {
+    const aesKey = await crypto.subtle.generateKey({name:"AES-CFB", length:256}, true, ["encrypt", "decrypt"]);
+    const iv = crypto.getRandomValues(new Uint8Array(16));
+    const enc = new TextEncoder();
+    const encryptedMessage = await crypto.subtle.encrypt({name:"AES-CFB", iv}, aesKey, enc.encode(message));
+
+    const recipientPubKey = await crypto.subtle.importKey(
+        "spki",
+        base64ToArrayBuffer(recipientPublicKeyBase64),
+        {name:"RSA-OAEP", hash:"SHA-256"},
+        false,
+        ["encrypt"]
+    );
+
+    const rawAES = await crypto.subtle.exportKey("raw", aesKey);
+    const encryptedKey = await crypto.subtle.encrypt({name:"RSA-OAEP"}, recipientPubKey, rawAES);
+
+    return {
+        encrypted_message: arrayBufferToBase64(encryptedMessage),
+        encrypted_key: arrayBufferToBase64(encryptedKey),
+        iv: arrayBufferToBase64(iv)
+    };
+}
+
+async function decryptMessage(encryptedMessage, encryptedKey, iv) {
+    const privateKeyJwk = JSON.parse(localStorage.getItem("privateKey"));
+    const privateKey = await crypto.subtle.importKey(
+        "pkcs8",
+        base64ToArrayBuffer(privateKeyJwk),
+        {name:"RSA-OAEP", hash:"SHA-256"},
+        false,
+        ["decrypt"]
+    );
+
+    const aesKeyRaw = await crypto.subtle.decrypt({name:"RSA-OAEP"}, privateKey, base64ToArrayBuffer(encryptedKey));
+    const aesKey = await crypto.subtle.importKey("raw", aesKeyRaw, {name:"AES-CFB"}, false, ["decrypt"]);
+    const decrypted = await crypto.subtle.decrypt({name:"AES-CFB", iv: base64ToArrayBuffer(iv)}, aesKey, base64ToArrayBuffer(encryptedMessage));
+
+    return new TextDecoder().decode(decrypted);
+}
+
+// ----- WebSocket -----
+const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+const chatId = {{ chat.id|default:1 }};
+const ws = new WebSocket(`${protocol}://${window.location.host}/ws/chat/${chatId}/`);
+
+const chatContainer = document.getElementById('chatContainer');
+const messageInput = document.getElementById('messageInput');
+const sendButton = document.getElementById('sendButton');
+
+function scrollToBottom() {
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// decrypt all existing messages on load
+async function decryptExistingMessages() {
+    const messages = chatContainer.querySelectorAll(".message");
+    for (let msgDiv of messages) {
+        const encMsg = msgDiv.dataset.encryptedMessage;
+        const encKey = msgDiv.dataset.encryptedKey;
+        const iv = msgDiv.dataset.iv;
+        try {
+            const decrypted = await decryptMessage(encMsg, encKey, iv);
+            msgDiv.querySelector(".message-text").textContent = decrypted;
+        } catch(e) {
+            msgDiv.querySelector(".message-text").textContent = "[cannot decrypt]";
+        }
+    }
+}
+decryptExistingMessages();
+scrollToBottom();
+
+ws.onmessage = async (ev) => {
+    const data = JSON.parse(ev.data);
+    const messageDiv = document.createElement('div');
+    messageDiv.classList.add('message');
+    messageDiv.classList.add(data.sender === '{{ user.username }}' ? 'message-right' : 'message-left');
+
+    // temporarily show as encrypted
+    messageDiv.innerHTML = `<strong>${data.sender}:</strong> <span class="message-text">[encrypted]</span> <em>(${data.timestamp})</em>`;
+    messageDiv.dataset.encryptedMessage = data.encrypted_message;
+    messageDiv.dataset.encryptedKey = data.encrypted_key;
+    messageDiv.dataset.iv = data.iv;
+    chatContainer.appendChild(messageDiv);
+
+    try {
+        const decrypted = await decryptMessage(data.encrypted_message, data.encrypted_key, data.iv);
+        messageDiv.querySelector(".message-text").textContent = decrypted;
+    } catch(e) {
+        messageDiv.querySelector(".message-text").textContent = "[cannot decrypt]";
+    }
+
+    scrollToBottom();
+};
+
+sendButton.addEventListener('click', async () => {
+    const content = messageInput.value.trim();
+    if (!content) return;
+
+    // fetch recipient public key from your API
+    const recipientPublicKey = await fetch(`/api/get-public-key/{{ chat.user2.id }}/`).then(r=>r.text());
+
+    const encryptedData = await encryptMessage(content, recipientPublicKey);
+    ws.send(JSON.stringify({ 
+        sender: '{{ user.username }}', 
+        ...encryptedData
+    }));
+
+    messageInput.value = '';
+});
+
+messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendButton.click();
+});
+</script>
+{% endblock content %}

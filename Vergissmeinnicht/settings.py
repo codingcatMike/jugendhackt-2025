@@ -20,7 +20,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-$3416%l$-y4^y1_%o&+3(k-o4%7wkx$w0#nh^+m+4_m6$smi&_'
+SECRET_KEY = 'django-insecure-bgay#-2yh-(s+8p3)eiwsecvz$puvh9%p-v4pxigzy7dv93-qg'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -31,6 +31,7 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -38,9 +39,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'auth_man',
-    'chat',
+    'chat',        
 ]
-
+ASGI_APPLICATION = 'Vergissmeinnicht.asgi.application'
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -113,6 +114,11 @@ USE_I18N = True
 USE_TZ = True
 
 
+
+STATICFILES_DIRS = [
+BASE_DIR / "static",
+]
+STATIC_ROOT = BASE_DIR / "staticfiles"
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
@@ -122,3 +128,34 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+LOGIN_REDIRECT_URL = 'chat'
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
+
+SIGNUP_REDIRECT_URL = 'chat'
+LOGIN_REDIRECT_URL = 'chat'
+
+
+#COSTS FOR EMOJIS/GIFS/ANIMATIONS AND MORE
+COST_GIF1 = 10
+COST_GIF2 = 15
+COST_GIF3 = 20
+COST_GIF4 = 40
+COST_GIF5 = 85
+COST_GIF6 = 120
+
+COST_PIC1 = 2
+COST_PIC2 = 5
+COST_PIC3 = 10
+COST_PIC4 = 15
+COST_PIC5 = 20
+COST_PIC6 = 25
+COST_PIC7 = 30
+COST_PIC8 = 45
+COST_PIC9 = 85
+COST_PIC10 = 120

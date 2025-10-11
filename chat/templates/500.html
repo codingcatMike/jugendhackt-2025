@@ -1,0 +1,160 @@
+
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>500 — Internal Server Error</title>
+<style>
+  :root{
+    --bg:#0f1724;
+    --card:#0b1220;
+    --accent:#7dd3fc;
+    --accent2:#f472b6; /* für Rickroll-Knopf */
+    --muted:#9aa6b2;
+    --warn-yellow:#ffea00;
+    --warn-black:#000000;
+    font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:
+      radial-gradient(1000px 500px at 10% 10%, rgba(125,211,252,0.06), transparent),
+      radial-gradient(700px 350px at 90% 90%, rgba(168,85,247,0.03), transparent),
+      var(--bg);
+    color:#e6eef6;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:28px;
+    position:relative;
+    overflow:hidden;
+  }
+
+  /* Warnbalken links & rechts */
+  .warn-bar{
+    position:absolute;
+    top:0;
+    width:60px;
+    height:200%;
+    background:repeating-linear-gradient(
+      45deg,
+      var(--warn-yellow) 0 15px,
+      var(--warn-black) 15px 30px
+    );
+    z-index:0;
+    pointer-events:none;
+  }
+  .warn-bar-left{
+    left:0;
+    animation: move-down 25s linear infinite;
+  }
+  .warn-bar-right{
+    right:0;
+    animation: move-up 25s linear infinite;
+  }
+  @keyframes move-down{
+    0% { transform: translateY(-50%); }
+    100% { transform: translateY(0%); }
+  }
+  @keyframes move-up{
+    0% { transform: translateY(0%); }
+    100% { transform: translateY(-50%); }
+  }
+
+  .wrap{max-width:920px;width:100%;z-index:1;position:relative}
+  .card{
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border:1px solid rgba(255,255,255,0.04);
+    border-radius:14px;
+    padding:28px;
+    backdrop-filter:blur(6px);
+    box-shadow:0 10px 30px rgba(2,6,23,0.6)
+  }
+  h1{font-size:36px;margin:12px 0 8px 0;text-align:center}
+  h2{margin:8px 0;text-align:center;font-weight:400;color:#d3d3d3}
+  .url-section{text-align:center;margin:20px 0}
+  .url-box{
+    margin-top:6px;
+    padding:10px 12px;
+    background:rgba(255,255,255,0.02);
+    border-radius:8px;
+    border:1px solid rgba(255,255,255,0.03);
+    font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;
+    color:#d9f6ff;
+    overflow-wrap:anywhere;
+    user-select:all;
+  }
+  .actions{text-align:center;margin-top:20px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn{
+    background:linear-gradient(90deg,var(--accent), #60a5fa);
+    color:#07203a;
+    padding:12px 20px;
+    border-radius:10px;
+    border:none;
+    font-weight:600;
+    text-decoration:none;
+    font-size:16px;
+    display:inline-block;
+  }
+  .btn.rickroll{
+    background:linear-gradient(90deg,var(--accent2), #fbbf24);
+    color:#07203a;
+  }
+
+  .svg-wrap{display:flex;justify-content:center;margin-top:28px;z-index:1;position:relative}
+  .scene{width:520px;max-width:100%}
+  @keyframes floaty{0%{transform:translateY(0)}50%{transform:translateY(-6px)}100%{transform:translateY(0)}}
+  .float{animation:floaty 4s ease-in-out infinite}
+  @media (max-width:560px){h1{font-size:28px}.btn{font-size:14px;padding:10px 16px}}
+</style>
+</head>
+<body>
+
+  <!-- Warnbalken -->
+  <div class="warn-bar warn-bar-left"></div>
+  <div class="warn-bar warn-bar-right"></div>
+
+  <div class="wrap">
+    <main class="card" role="main" aria-labelledby="title">
+      <h2>Well...</h2>
+      <h1 id="title">The system is down right now</h1>
+      <h2>Some idiot messed with the server and broke it. (probably me, Henrik 😅)</h2>
+
+    <br>
+    <br>
+      <h2>Sorry. But we are trying to fix the server right now (hopefully) and it should be running any second now...</h2>
+
+      <div class="actions">
+        <a class="btn" href="/">← Zurück zur Startseite</a>
+        <a class="btn rickroll" href="https://youtu.be/xvFZjo5PgG0?si=p_Z3F-2aSa_jEqcE" target="_blank">Get rickrolled</a>
+      </div>
+    </main>
+
+    <!-- SVG Illustration mit X-Augen -->
+    <div class="svg-wrap" aria-hidden="true">
+      <svg class="scene float" viewBox="0 0 600 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dekorative Illustration">
+        <defs>
+          <linearGradient id="grad500" x1="0" x2="1">
+            <stop offset="0" stop-color="#7dd3fc" stop-opacity="0.95"/>
+            <stop offset="1" stop-color="#60a5fa" stop-opacity="0.95"/>
+          </linearGradient>
+        </defs>
+
+        <!-- Monitor -->
+        <rect x="120" y="60" width="360" height="200" rx="16" fill="#071226" stroke="url(#grad500)" stroke-width="4"/>
+        <rect x="220" y="260" width="160" height="20" rx="6" fill="#7dd3fc" opacity="0.2"/>
+
+        <!-- Gesicht mit X-Augen -->
+        <line x1="230" y1="130" x2="250" y2="150" stroke="#7dd3fc" stroke-width="4" stroke-linecap="round"/>
+        <line x1="250" y1="130" x2="230" y2="150" stroke="#7dd3fc" stroke-width="4" stroke-linecap="round"/>
+        <line x1="350" y1="130" x2="370" y2="150" stroke="#7dd3fc" stroke-width="4" stroke-linecap="round"/>
+        <line x1="370" y1="130" x2="350" y2="150" stroke="#7dd3fc" stroke-width="4" stroke-linecap="round"/>
+        <path d="M250 200 Q300 170 350 200" stroke="#7dd3fc" stroke-width="6" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </div>
+
+</body>
+</html>
