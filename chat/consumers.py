@@ -181,3 +181,5 @@ def increment_coins(profile, amount=1):
     with transaction.atomic():
         profile.coins += amount
         profile.save()
+
+
