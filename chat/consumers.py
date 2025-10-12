@@ -6,13 +6,16 @@ from django.utils.html import escape
 from django.core.files.base import ContentFile
 from django.db import transaction
 from .models import Chat, Message
-from auth_man.models import Profile  # Profile für Coins
+from auth_man.models import Profile
 import json
 import base64
 
 # ------------------- CONFIG -------------------
-# Anzahl der maximalen Nachrichten pro Tag pro Nutzer
-MAX_MESSAGES_PER_DAY = 5
+# Maximale Anzahl Textnachrichten pro Tag
+MAX_MESSAGES_PER_DAY = 1
+
+# Maximale Anzahl von GIFs/Dateien pro Tag
+MAX_MEDIA_PER_DAY = 3
 # ----------------------------------------------
 
 
@@ -39,17 +42,28 @@ class ChatConsumer(AsyncWebsocketConsumer):
             }))
             return
 
-        # Nachrichtenlimit prüfen
-        if "encrypted_message" in data and data["encrypted_message"].strip():
-            messages_sent_today = await count_messages_today(self.chat_id, sender)
+        is_gif = data.get("media_type") == "gif"
+        has_media = "media" in data and data["media"]
+
+        # --- Textnachricht prüfen ---
+        if "encrypted_message" in data and data["encrypted_message"].strip() and not has_media and not is_gif:
+            messages_sent_today = await count_text_messages_today(self.chat_id, sender)
             if messages_sent_today >= MAX_MESSAGES_PER_DAY:
                 await self.send(text_data=json.dumps({
-                    "error": f"Du kannst heute nur {MAX_MESSAGES_PER_DAY} Nachricht(en) senden!"
+                    "error": f"Du kannst heute nur {MAX_MESSAGES_PER_DAY} Textnachricht(en) senden!"
+                }))
+                return
+
+        # --- GIFs und Dateien prüfen ---
+        if is_gif or has_media:
+            media_sent_today = await count_media_today(self.chat_id, sender)
+            if media_sent_today >= MAX_MEDIA_PER_DAY:
+                await self.send(text_data=json.dumps({
+                    "error": f"Du kannst heute nur {MAX_MEDIA_PER_DAY} Mediendatei(en) (GIFs oder Bilder) senden!"
                 }))
                 return
 
         # GIF-Check: Coins prüfen
-        is_gif = data.get("media_type") == "gif"
         if is_gif:
             price = int(data.get("price", 0))
             profile = await get_user_profile(sender)
@@ -62,7 +76,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         # Media file decoding
         media_file = None
-        if "media" in data:
+        if has_media:
             try:
                 format, imgstr = data["media"].split(";base64,")
                 ext = format.split("/")[-1]
@@ -74,12 +88,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 print(f"[WS] Failed to decode media: {e}")
                 media_file = None
 
-        # Increment coins for normal messages (not GIFs)
-        if not is_gif and ("encrypted_message" in data and data["encrypted_message"].strip()):
+        # Nur bei Textnachrichten Coins hinzufügen
+        if not is_gif and not has_media and ("encrypted_message" in data and data["encrypted_message"].strip()):
             profile = await get_user_profile(sender)
             await increment_coins(profile, 1)
 
-        # Create message
+        # Nachricht speichern
         try:
             message = await create_message(self.chat_id, sender, data, media_file)
         except Exception as e:
@@ -98,7 +112,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             "timestamp": str(message.timestamp)
         }
 
-        # Broadcast an alle im Chat
         await self.channel_layer.group_send(
             self.group_name,
             {
@@ -118,8 +131,6 @@ def create_message(chat_id, user, data, media_file=None):
     chat = Chat.objects.get(id=chat_id)
     if user != chat.user1 and user != chat.user2:
         raise PermissionError("User not part of this chat")
-    if chat.activated is False:
-        raise PermissionError("Chat not activated yet")
 
     return Message.objects.create(
         chat=chat,
@@ -133,9 +144,24 @@ def create_message(chat_id, user, data, media_file=None):
 
 
 @database_sync_to_async
-def count_messages_today(chat_id, user):
+def count_text_messages_today(chat_id, user):
     today = timezone.now().date()
-    return Message.objects.filter(chat_id=chat_id, timestamp__date=today, sender=user).count()
+    return Message.objects.filter(
+        chat_id=chat_id,
+        sender=user,
+        timestamp__date=today,
+        media__isnull=True  # Nur Textnachrichten zählen
+    ).count()
+
+
+@database_sync_to_async
+def count_media_today(chat_id, user):
+    today = timezone.now().date()
+    return Message.objects.filter(
+        chat_id=chat_id,
+        sender=user,
+        timestamp__date=today
+    ).exclude(media__isnull=True).count()  # Nur Mediennachrichten zählen
 
 
 @database_sync_to_async

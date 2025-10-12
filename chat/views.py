@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from auth_man.models import Profile
 from .models import Chat, Message, GIF
 import json
+from django.db.models import Max
 
 
 def check(request):
@@ -35,6 +36,9 @@ def chat(request, id=None):
 
     # Aktuellen Chat laden (wenn vorhanden)
     chat = get_object_or_404(Chat, id=id) if id else None
+
+    # Annotate each chat with the timestamp of its last message
+    user_chats = user_chats.annotate(last_msg_time=Max('messages__timestamp'))
 
     # Nachrichten des aktuellen Chats nach Zeit (neueste unten)
     messages = Message.objects.filter(chat=chat).order_by('timestamp') if chat else []

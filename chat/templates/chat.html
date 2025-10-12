@@ -52,10 +52,20 @@ body { margin:0; padding:0; font-family:sans-serif; height:100vh; overflow:hidde
   <div class="chat-list" id="chatList">
     <h3>Chats</h3>
     {% for c in user_chats %}
-      <div class="chat-item {% if c.id == chat.id %}active{% endif %}" data-chat-id="{{ c.id }}">
-        <span>{% if user == c.user1 %}{{ c.user2.username }}{% else %}{{ c.user1.username }}{% endif %}</span>
-        <small>{{ c.last_activity|date:"H:i" }}</small>
-      </div>
+    <div class="chat-item {% if c.id == chat.id %}active{% endif %}"
+        data-chat-id="{{ c.id }}"
+        {% if c.last_msg_time %}data-last-activity="{{ c.last_msg_time|date:'Y-m-d H:i:s' }}"{% endif %}>
+      <span>{% if user == c.user1 %}{{ c.user2.username }}{% else %}{{ c.user1.username }}{% endif %}</span>
+      <small>
+        {% if c.last_msg_time %}
+          {{ c.last_msg_time|date:"d.m.Y H:i" }}
+        {% else %}
+          Kein Verlauf
+        {% endif %}
+      </small>
+    </div>
+
+
     {% empty %}
       <p style="padding:10px;">Keine Chats vorhanden.</p>
     {% endfor %}
@@ -122,24 +132,18 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // === CHAT REMINDER SYSTEM ===
+// === CHAT REMINDER SYSTEM ===
 (function remindInactiveChats() {
   const chatItems = Array.from(document.querySelectorAll(".chat-item"));
   if (chatItems.length === 0) return;
 
-  // Build an array of chats with timestamps
+  // Collect inactive chats
   const inactiveChats = chatItems
     .map(c => {
-      const timeStr = c.querySelector("small")?.textContent || "";
-      // Parse HH:mm to a Date object with today's date for comparison
-      const [hour, minute] = timeStr.split(":").map(Number);
-      const lastActivity = new Date();
-      if (!isNaN(hour)) {
-        lastActivity.setHours(hour);
-        lastActivity.setMinutes(minute);
-        lastActivity.setSeconds(0);
-      } else {
-        return null;
-      }
+      const lastActivityStr = c.dataset.lastActivity;
+      if (!lastActivityStr) return null;
+      const lastActivity = new Date(lastActivityStr.replace(" ", "T")); // parse "Y-m-d H:i:s"
+      if (isNaN(lastActivity)) return null;
       return { el: c, lastActivity };
     })
     .filter(Boolean)
@@ -155,7 +159,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const randomChat = inactiveChats[Math.floor(Math.random() * inactiveChats.length)];
   const username = randomChat.el.querySelector("span")?.textContent || "jemandem";
 
-  // Create a reminder bar at the top of the chat list
+  // Create a reminder box
   const reminder = document.createElement("div");
   reminder.style.background = "#fff8c6";
   reminder.style.padding = "10px";
@@ -165,13 +169,13 @@ document.addEventListener("DOMContentLoaded", () => {
   reminder.style.cursor = "pointer";
   reminder.style.border = "1px solid #e2c300";
   reminder.innerHTML = `💬 Du hast seit über einer Woche nicht mit <strong>${username}</strong> geschrieben.<br><small>Klicke hier, um den Chat zu öffnen!</small>`;
-  
+
   reminder.addEventListener("click", () => {
     const chatId = randomChat.el.dataset.chatId;
     if (chatId) window.location.href = `/chat/${chatId}`;
   });
 
-  // Insert reminder at the top of the chat list
+  // Insert reminder at top of chat list
   const chatList = document.getElementById("chatList");
   chatList.insertBefore(reminder, chatList.children[1]);
 })();
