@@ -3,28 +3,148 @@
 {% block title %}Signup{% endblock title %}
 
 {% block content %}
+<style>
+.login-container {
+  background:#fff;
+  padding:30px 40px;
+  border-radius:15px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.15);
+  width:350px;
+  text-align:center;
+  margin:40px auto;
+}
+.login-container h2 {
+  margin-bottom:20px;
+  color:#333;
+}
+.form-group {
+  margin-bottom:15px;
+  text-align:left;
+}
+.form-group label {
+  font-weight:600;
+  color:#444;
+  display:block;
+  margin-bottom:5px;
+}
+.form-group input {
+  width:100%;
+  padding:10px;
+  border-radius:10px;
+  border:1px solid #ccc;
+  outline:none;
+}
+.form-group input:focus {
+  border-color:#9cbeff;
+  box-shadow:0 0 5px rgba(156,190,255,0.7);
+}
+.errorlist {
+  color:#e74c3c;
+  list-style:none;
+  padding:0;
+  margin-top:5px;
+  font-size:13px;
+}
+.login-button {
+  padding:10px 15px;
+  border:none;
+  border-radius:8px;
+  background-color:#9cbeff;
+  color:white;
+  cursor:pointer;
+  width:100%;
+  transition:background-color 0.3s ease;
+}
+.login-button:hover {
+  background-color:#7da5ff;
+}
+.register-text {
+  margin-top:15px;
+  font-size:14px;
+}
+.register-text a {
+  color:#9cbeff;
+  text-decoration:none;
+}
+.register-text a:hover {
+  text-decoration:underline;
+}
+.non-field-errors {
+  color:#e74c3c;
+  margin-bottom:10px;
+  font-size:14px;
+}
+</style>
+
 <div class="login-container">
-    <h2>Sign Up</h2>
-    <form method="post">
-        {% csrf_token %}
-        <div class="form-group">
-            <label for="id_username">Username</label>
-            {{ form.username }}
-        </div>
-        <div class="form-group">
-            <label for="id_username">Nickname</label>
-            {{ form.username }}
-        </div>
-        <div class="form-group">
-            <label for="id_password1">Password</label>
-            {{ form.password1 }}
-        </div>
-        <div class="form-group">
-            <label for="id_password2">Confirm Password</label>
-            {{ form.password2 }}
-        </div>
-        <button type="submit" class="login-button">Sign Up</button>
-    </form>
-    <p class="register-text">Already have an account? <a href="{% url 'login' %}">Login here</a></p>
+  <h2>Sign Up</h2>
+
+  {# ✅ Non-field errors (like "username already exists") #}
+  {% if form.non_field_errors %}
+    <div class="non-field-errors">
+      {% for error in form.non_field_errors %}
+        <p>{{ error }}</p>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+
+    <div class="form-group">
+      <label for="id_username">Username</label>
+      {{ form.username }}
+      {% if form.username.errors %}
+        <ul class="errorlist">
+          {% for error in form.username.errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+
+    <div class="form-group">
+      <label for="id_nickname">Nickname</label>
+      {{ form.nickname }}
+      {% if form.nickname.errors %}
+        <ul class="errorlist">
+          {% for error in form.nickname.errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+
+    <div class="form-group">
+      <label for="id_password1">Password</label>
+      {{ form.password1 }}
+      {% if form.password1.errors %}
+        <ul class="errorlist">
+          {% for error in form.password1.errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+
+    <div class="form-group">
+      <label for="id_password2">Confirm Password</label>
+      {{ form.password2 }}
+      {% if form.password2.errors %}
+        <ul class="errorlist">
+          {% for error in form.password2.errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+
+    <button type="submit" class="login-button">Sign Up</button>
+  </form>
+
+  <p class="register-text">
+    Already have an account?
+    <a href="{% url 'login' %}">Login here</a>
+  </p>
 </div>
 {% endblock content %}

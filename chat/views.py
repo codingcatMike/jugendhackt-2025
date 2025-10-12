@@ -93,3 +93,50 @@ def gif_list(request):
         for gif in gifs
     ]
     return JsonResponse(data, safe=False)
+
+
+def start_chat(request):
+    print(request.method)
+    if request.method == "POST":
+        username = request.POST.get("username")
+        if not username:
+            return render(request, 'start_chat.html', {"error": "Bitte einen Benutzernamen eingeben."})
+
+        try:
+            other_user = User.objects.get(username=username)
+            if other_user == request.user:
+                return render(request, 'start_chat.html', {"error": "Du kannst keinen Chat mit dir selbst starten."})
+        except User.DoesNotExist:
+            return render(request, 'start_chat.html', {"error": "Benutzer nicht gefunden."})
+
+        # Prüfen, ob bereits ein Chat zwischen den beiden Nutzern existiert
+        chat = Chat.objects.filter(
+            (Q(user1=request.user) & Q(user2=other_user)) |
+            (Q(user1=other_user) & Q(user2=request.user))
+        ).first()
+
+        if not chat:
+            # Neuen Chat erstellen
+            chat = Chat.objects.create(user1=request.user, user2=other_user)
+
+        return render(request, 'chat.html', {
+            "chat": chat,
+            "messages": Message.objects.filter(chat=chat).order_by('timestamp'),
+            "user_chats": Chat.objects.filter(Q(user1=request.user) | Q(user2=request.user)),
+        })
+    return render(request, 'start_chat.html', {})
+
+def activate_chat(request, chat_id):
+    """Aktiviert einen Chat, damit Nachrichten gesendet werden können."""
+    chat = get_object_or_404(Chat, id=chat_id)
+    if request.user != chat.user1 and request.user != chat.user2:
+        return HttpResponse("You are not part of this chat.", status=403)
+
+    chat.activated = True
+    chat.save()
+    return render(request, 'chat.html', {
+        "chat": chat,
+        "messages": Message.objects.filter(chat=chat).order_by('timestamp'),
+        "user_chats": Chat.objects.filter(Q(user1=request.user) | Q(user2=request.user)),
+        "info": "Chat aktiviert! Du kannst jetzt Nachrichten senden."
+    })

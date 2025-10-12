@@ -31,6 +31,8 @@ urlpatterns = [
     path('api/get-public-key/<id>/', get_public_key, name='get_public_key'),#
     path("upload_public_key/", upload_public_key, name="upload_public_key"),
     path('api/gifs/', gif_list, name='gif-list'),
+    path('start_chat/', start_chat, name='start_chat'),#
+    path('activate_chat/<int:chat_id>/', activate_chat, name='activate_chat'),#
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

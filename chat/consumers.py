@@ -10,6 +10,11 @@ from auth_man.models import Profile  # Profile für Coins
 import json
 import base64
 
+# ------------------- CONFIG -------------------
+# Anzahl der maximalen Nachrichten pro Tag pro Nutzer
+MAX_MESSAGES_PER_DAY = 5
+# ----------------------------------------------
+
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -34,12 +39,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
             }))
             return
 
-        # Nur 1 Textnachricht pro Tag
+        # Nachrichtenlimit prüfen
         if "encrypted_message" in data and data["encrypted_message"].strip():
-            already_sent = await has_message_been_sent_today(self.chat_id, sender)
-            if already_sent:
+            messages_sent_today = await count_messages_today(self.chat_id, sender)
+            if messages_sent_today >= MAX_MESSAGES_PER_DAY:
                 await self.send(text_data=json.dumps({
-                    "error": "Du kannst heute nur eine Nachricht senden!"
+                    "error": f"Du kannst heute nur {MAX_MESSAGES_PER_DAY} Nachricht(en) senden!"
                 }))
                 return
 
@@ -113,6 +118,8 @@ def create_message(chat_id, user, data, media_file=None):
     chat = Chat.objects.get(id=chat_id)
     if user != chat.user1 and user != chat.user2:
         raise PermissionError("User not part of this chat")
+    if chat.activated is False:
+        raise PermissionError("Chat not activated yet")
 
     return Message.objects.create(
         chat=chat,
@@ -126,9 +133,9 @@ def create_message(chat_id, user, data, media_file=None):
 
 
 @database_sync_to_async
-def has_message_been_sent_today(chat_id, user):
+def count_messages_today(chat_id, user):
     today = timezone.now().date()
-    return Message.objects.filter(chat_id=chat_id, timestamp__date=today, sender=user).exists()
+    return Message.objects.filter(chat_id=chat_id, timestamp__date=today, sender=user).count()
 
 
 @database_sync_to_async
