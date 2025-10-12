@@ -20,7 +20,6 @@ class Message(models.Model):
     encrypted_key_sender = models.TextField(blank=True)  
     iv = models.TextField(blank=True)  
     timestamp = models.DateTimeField(auto_now_add=True)
-
     def __str__(self):
         if self.media:
             return f"Media message from {self.sender.username} at {self.timestamp}"

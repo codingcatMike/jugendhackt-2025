@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Manage Keys{% endblock %}
+
+{% block content %}
+<style>
+
+
+.card {
+    background: #fff;
+    padding: 40px;
+    border-radius: 15px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    width: 400px;
+    max-width: 90%;
+    text-align: center;
+}
+
+h2 {
+    margin-bottom: 30px;
+    color: #333;
+    font-weight: 600;
+}
+
+button {
+    background-color: #4A90E2;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 25px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: 0.3s;
+    margin-top: 10px;
+}
+
+button:hover {
+    background-color: #357ABD;
+}
+
+input[type="file"] {
+    display: block;
+    margin: 15px auto;
+    font-size: 14px;
+}
+
+.alert {
+    margin-top: 15px;
+    font-size: 14px;
+    color: green;
+}
+</style>
+
+<div class="login-container">
+
+        <h2>🔑 Private Key Management</h2>
+
+        <div>
+            <button id="exportKeyBtn">Export Private Key</button>
+        </div>
+
+        <div style="margin-top:30px;">
+            <label for="importKeyInput" style="font-weight:500;">Import Private Key:</label>
+            <input type="file" id="importKeyInput" accept=".txt">
+        </div>
+
+        <div id="alertMsg" class="alert" style="display:none;"></div>
+
+</div>
+
+<script>
+const username = "{{ username }}";
+const alertMsg = document.getElementById("alertMsg");
+
+// Export private key
+document.getElementById("exportKeyBtn").addEventListener("click", () => {
+    const privateKey = localStorage.getItem("privateKey_" + username);
+    if(!privateKey){
+        alertMsg.style.display = "block";
+        alertMsg.style.color = "red";
+        alertMsg.textContent = "No private key found in localStorage!";
+        return;
+    }
+    const blob = new Blob([privateKey], {type:"text/plain"});
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "private_key.txt";
+    link.click();
+
+    alertMsg.style.display = "block";
+    alertMsg.style.color = "green";
+    alertMsg.textContent = "Private key exported successfully!";
+});
+
+// Import private key
+document.getElementById("importKeyInput").addEventListener("change", (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+        localStorage.setItem("privateKey_" + username, reader.result);
+        alertMsg.style.display = "block";
+        alertMsg.style.color = "green";
+        alertMsg.textContent = "Private key imported successfully!";
+    };
+    reader.readAsText(file);
+});
+</script>
+{% endblock %}

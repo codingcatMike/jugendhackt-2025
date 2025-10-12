@@ -70,7 +70,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'Vergissmeinnicht.wsgi.application'
-
+ASGI_APPLICATION = 'Vergissmeinnicht.asgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases

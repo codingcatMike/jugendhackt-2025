@@ -2,12 +2,11 @@ from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse, JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Q
+from django.db.models import Q, Max
 from django.contrib.auth.models import User
 from auth_man.models import Profile
 from .models import Chat, Message, GIF
 import json
-from django.db.models import Max
 
 
 def check(request):
@@ -36,6 +35,9 @@ def chat(request, id=None):
 
     # Aktuellen Chat laden (wenn vorhanden)
     chat = get_object_or_404(Chat, id=id) if id else None
+    recipient_id = None
+    if chat:
+        recipient_id = chat.user2.id if chat.user1 == request.user else chat.user1.id
 
     # Annotate each chat with the timestamp of its last message
     user_chats = user_chats.annotate(last_msg_time=Max('messages__timestamp'))
@@ -43,11 +45,11 @@ def chat(request, id=None):
     # Nachrichten des aktuellen Chats nach Zeit (neueste unten)
     messages = Message.objects.filter(chat=chat).order_by('timestamp') if chat else []
 
-    # Daten an Template übergeben
     return render(request, 'chat.html', {
         "chat": chat,
         "messages": messages,
         "user_chats": user_chats,
+        "recipient_id": recipient_id,
     })
 
 
@@ -56,7 +58,7 @@ def get_public_key(request, id):
     try:
         user = User.objects.get(id=id)
         profile = Profile.objects.get(user=user)
-        return HttpResponse(profile.public_key)
+        return HttpResponse(profile.public_key or "")
     except User.DoesNotExist:
         return HttpResponse("User not found", status=404)
     except Profile.DoesNotExist:
@@ -100,7 +102,6 @@ def gif_list(request):
 
 
 def start_chat(request):
-    print(request.method)
     if request.method == "POST":
         username = request.POST.get("username")
         if not username:
@@ -120,7 +121,6 @@ def start_chat(request):
         ).first()
 
         if not chat:
-            # Neuen Chat erstellen
             chat = Chat.objects.create(user1=request.user, user2=other_user)
 
         return render(request, 'chat.html', {
@@ -128,14 +128,15 @@ def start_chat(request):
             "messages": Message.objects.filter(chat=chat).order_by('timestamp'),
             "user_chats": Chat.objects.filter(Q(user1=request.user) | Q(user2=request.user)),
         })
+
     return render(request, 'start_chat.html', {})
+
 
 def activate_chat(request, chat_id):
     """Aktiviert einen Chat, damit Nachrichten gesendet werden können."""
     chat = get_object_or_404(Chat, id=chat_id)
     if request.user != chat.user1 and request.user != chat.user2:
         return HttpResponse("You are not part of this chat.", status=403)
-
     chat.activated = True
     chat.save()
     return render(request, 'chat.html', {
@@ -144,3 +145,40 @@ def activate_chat(request, chat_id):
         "user_chats": Chat.objects.filter(Q(user1=request.user) | Q(user2=request.user)),
         "info": "Chat aktiviert! Du kannst jetzt Nachrichten senden."
     })
+
+
+
+
+@login_required
+def manage_keys(request):
+    """
+    Shows the Export / Import keys page.
+    Private keys are only handled in localStorage, not saved in the DB.
+    """
+    return render(request, 'manage_keys.html', {
+        'username': request.user.username
+    })
+
+
+@login_required
+@csrf_exempt
+def import_private_key(request):
+    """
+    Speichert einen hochgeladenen privaten Schlüssel
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Nur POST erlaubt"}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        private_key_b64 = data.get("private_key")
+        if not private_key_b64:
+            return JsonResponse({"error": "Keine private key Daten erhalten"}, status=400)
+
+        profile, _ = Profile.objects.get_or_create(user=request.user)
+        profile.private_key = private_key_b64
+        profile.save()
+        return JsonResponse({"success": True})
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
