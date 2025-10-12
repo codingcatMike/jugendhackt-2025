@@ -9,8 +9,7 @@ def signup(request):
         print(form.errors)
         if form.is_valid():
             form.save()
-            login(request, form.get_user())
-            return render(request, 'registration/chat.html', {"form": form, "success": True})
+            return redirect('login')
     return render(request, 'registration/signup.html', {"form": form})
 
 def logoutn(request):

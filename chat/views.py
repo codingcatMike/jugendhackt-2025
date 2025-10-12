@@ -1,4 +1,4 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse, JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
@@ -139,13 +139,7 @@ def activate_chat(request, chat_id):
         return HttpResponse("You are not part of this chat.", status=403)
     chat.activated = True
     chat.save()
-    return render(request, 'chat.html', {
-        "chat": chat,
-        "messages": Message.objects.filter(chat=chat).order_by('timestamp'),
-        "user_chats": Chat.objects.filter(Q(user1=request.user) | Q(user2=request.user)),
-        "info": "Chat aktiviert! Du kannst jetzt Nachrichten senden."
-    })
-
+    return redirect('chat', id=chat_id)
 
 
 

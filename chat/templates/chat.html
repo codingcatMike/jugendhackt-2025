@@ -3,40 +3,39 @@
 {% load static %}
 {% block content %}
 <style>
-body { margin:0; padding:0; font-family:sans-serif; height:100vh; overflow:hidden; }
-.main-layout { display:flex; height:93vh; }
-.chat-list { width:280px; border-right:1px solid #ddd; overflow-y:auto; background:#f5f5f5; }
-.chat-list h3 { padding:15px; margin:0; background:#e0e0e0; }
-.chat-item { padding:12px 15px; border-bottom:1px solid #eee; cursor:pointer; display:flex; justify-content:space-between; }
-.chat-item.active { background:#d4f5d0; }
-.chat-area { flex:1; display:flex; flex-direction:column; background-color: #dddddd9c; }
-.header-row { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-bottom:1px solid #ddd; background:#fff; }
-.messages-scroll { flex:1; overflow-y:auto; padding:10px 20px 80px; display:flex; flex-direction:column; gap:10px; }
-.message { max-width:70%; padding:10px 15px; border-radius:15px; word-wrap:break-word; }
-.message-left { background: #f1f1f1; align-self:flex-start; }
-.message-right { background: #9cbeff; color:white; align-self:flex-end; }
-.chat-input { display:flex; flex-wrap:wrap; gap:10px; padding:10px; border-top:1px solid #ddd; background:#fff; }
-.chat-input input[type="text"] { flex:1; padding:10px; border-radius:10px; border:1px solid #ccc; }
-.chat-input input[type="file"] { border:none; }
-.chat-input button { padding:10px 15px; border-radius:10px; border:none; background: #9cbeff; color:white; cursor:pointer;}
-.gif-menu {
-  position:absolute; bottom:60px; left:10px; background:white; border:1px solid #ccc; padding:10px;
-  border-radius:10px; width:320px; box-shadow:0 3px 10px rgba(0,0,0,0.2); display:none; max-height:300px; overflow-y:auto;
-}
-.gif-item { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; cursor:pointer; }
-.gif-item img { width:100px; border-radius:8px; }
-.gif-price { background:#eee; border-radius:8px; padding:3px 8px; font-size:13px; margin-left:10px; }
-.error-msg { color:red; font-size:13px; margin-left:10px; }
-.keygen-btn { margin:10px; background-color:#007BFF; color:white; padding:8px 12px; border-radius:8px; border:none; cursor:pointer; }
-.log-note { margin:8px 15px; font-size:12px; color:#666; }
-.file-upload-wrapper { display: flex; align-items: center; gap: 10px; }
-.file-upload-btn { background-color: #9cbeff; color: white; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; border: none; display: inline-block; }
-.file-upload-btn:hover { background-color: #9cbeff; }
-#mediaInput { display: none; }
-.file-name { font-size: 13px; color: #666; }
-.coin-box { display:flex; align-items:center; gap:10px; }
-.coin-count { background:#ffefc6; padding:6px 10px; border-radius:8px; font-weight:600; }
+body{margin:0;padding:0;font-family:sans-serif;height:93vh;overflow:hidden;width:100vw;}
+.main-layout{display:flex;height:100vh;width:100vw;}
+.chat-list{width:280px;border-right:1px solid #ddd;overflow-y:auto;background:#f5f5f5;}
+.chat-list h3{padding:15px;margin:0;background:#e0e0e0;}
+.chat-item{padding:12px 15px;border-bottom:1px solid #eee;cursor:pointer;display:flex;justify-content:space-between;}
+.chat-item.active{background:#d4f5d0;}
+.chat-area{flex:1;display:flex;flex-direction:column;background:#dddddd9c;position:relative;overflow:hidden;}
+.header-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #ddd;background:#fff;}
+.log-note{margin:8px 15px;font-size:12px;color:#666;}
+.coin-box{display:flex;align-items:center;gap:10px;}
+.coin-count{background:#ffefc6;padding:6px 10px;border-radius:8px;font-weight:600;}
+.messages-scroll{flex:1;overflow-y:auto;padding:10px 10px 160px;display:flex;flex-direction:column;gap:10px;height:calc(100vh - 160px);box-sizing:border-box;}
+.message{max-width:70%;padding:10px 15px;border-radius:15px;word-wrap:break-word;}
+.message-left{background:#f1f1f1;align-self:flex-start;}
+.message-right{background:#9cbeff;color:#fff;align-self:flex-end;}
+.chat-input{position:fixed;bottom:0;left:280px;right:0;display:flex;flex-wrap:wrap;gap:10px;padding:10px;border-top:1px solid #ddd;background:#fff;z-index:10;box-shadow:0 -2px 5px rgba(0,0,0,.05);}
+.chat-input input[type="text"]{flex:1;padding:10px;border-radius:10px;border:1px solid #ccc;}
+.chat-input input[type="file"]{display:none;}
+.chat-input button{padding:10px 15px;border-radius:10px;border:none;background:#9cbeff;color:#fff;cursor:pointer;}
+.file-upload-wrapper{display:flex;align-items:center;gap:10px;}
+.file-upload-btn{background:#9cbeff;color:#fff;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px;border:none;display:inline-block;}
+.file-upload-btn:hover{background:#7aa6f0;}
+.file-name{font-size:13px;color:#666;}
+.gif-menu{position:absolute;bottom:60px;left:10px;background:#fff;border:1px solid #ccc;padding:10px;border-radius:10px;width:320px;box-shadow:0 3px 10px rgba(0,0,0,.2);display:none;max-height:300px;overflow-y:auto;}
+.gif-item{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;cursor:pointer;}
+.gif-item img{width:100px;border-radius:8px;}
+.gif-price{background:#eee;border-radius:8px;padding:3px 8px;font-size:13px;margin-left:10px;}
+.keygen-btn,#startChatBtn{margin:10px;padding:8px 12px;border:none;border-radius:8px;background:#9cbeff;color:#fff;cursor:pointer;}
+.error-msg{color:red;font-size:13px;margin-left:10px;}
+.message img{border-radius:8px;max-width:120px;display:block;}
 </style>
+
+
 
 <div id="coinCount" style="display:none;">
  {% with user.profile_set.first as profile %}
@@ -65,7 +64,6 @@ body { margin:0; padding:0; font-family:sans-serif; height:100vh; overflow:hidde
       </small>
     </div>
 
-
     {% empty %}
       <p style="padding:10px;">Keine Chats vorhanden.</p>
     {% endfor %}
@@ -76,6 +74,7 @@ body { margin:0; padding:0; font-family:sans-serif; height:100vh; overflow:hidde
     <div class="header-row">
       <div>
         <button class="keygen-btn" id="generateKeysBtn">🔑 Generate / Upload Keys</button>
+        <button class="keygen-btn" onclick="location.href = '/keys/'">Key Management</button>
         <div class="log-note">Tipp: (Re)generate oder upload keys wenn Entschlüsselung fehlschlägt.</div>
       </div>
       {% if chat.activated == False %}
@@ -131,7 +130,6 @@ body { margin:0; padding:0; font-family:sans-serif; height:100vh; overflow:hidde
 </div>
 
 <script>
-  
 document.addEventListener("DOMContentLoaded", () => {
   console.log("DOM loaded. Initializing chat JS...");
   const chatContainer = document.getElementById("chatContainer");
@@ -149,30 +147,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const chatId = "{{ chat.id }}";
   const username = "{{ user.username }}";
+
   // ------------------- CHAT LIST CLICK -------------------
-const chatItems = document.querySelectorAll(".chat-item");
-chatItems.forEach(item => {
-  item.addEventListener("click", () => {
-    const chatId = item.dataset.chatId;
-    if(chatId){
-      window.location.href = `/chat/${chatId}/`; // Adjust URL pattern if needed
-    }
+  const chatItems = document.querySelectorAll(".chat-item");
+  chatItems.forEach(item => {
+    item.addEventListener("click", () => {
+      const chatId = item.dataset.chatId;
+      if(chatId){
+        window.location.href = `/chat/${chatId}/`;
+      }
+    });
   });
-});
 
   {% if user.id == chat.user1.id %}
-    const recipientId = {{ chat.user2.id }};
+    const recipientId = "{{ chat.user2.id }}";
   {% else %}
-    const recipientId = {{ chat.user1.id }};
+    const recipientId = "{{ chat.user1.id }}";
   {% endif %}
 
   const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
   const chatSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/chat/${chatId}/`);
 
-  function scrollToBottom() {
-    if(chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
-  }
-
+  function scrollToBottom() { if(chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight; }
   setTimeout(scrollToBottom, 100);
 
   chatSocket.onopen = () => console.log("WebSocket connected");
@@ -205,8 +201,8 @@ chatItems.forEach(item => {
           decryptedText = await decryptMessageAES(data.encrypted_message, keyForMe, data.iv);
         }
         msgEl.dataset.encrypted = data.encrypted_message || "";
-        msgEl.dataset.key_sender = data.encrypted_key_sender || "";
-        msgEl.dataset.key_recipient = data.encrypted_key_recipient || "";
+        msgEl.dataset.keySender = data.encrypted_key_sender || "";
+        msgEl.dataset.keyRecipient = data.encrypted_key_recipient || "";
         msgEl.dataset.iv = data.iv || "";
         msgEl.innerHTML = `<strong>${data.sender}:</strong> <span>${decryptedText}</span> <em>(${data.timestamp})</em>`;
       }
@@ -299,7 +295,6 @@ chatItems.forEach(item => {
   async function sendMessage(message, recipientPublicKeyB64, mediaData=null, isGif=false, price=0) {
     try {
       let payload = {};
-
       if(mediaData) {
         payload = { media: mediaData, media_type:isGif?"gif":"image", price };
       } else {
@@ -422,32 +417,26 @@ chatItems.forEach(item => {
 
   // ------------------- DECRYPT OLD MESSAGES ON LOAD -------------------
   async function decryptOldMessages() {
-    console.log("Decrypting old messages...");
-    const messages = chatContainer.querySelectorAll(".message");
-    for(const msgDiv of messages){
-        const msgEl = msgDiv.querySelector("span");
-        const isMe = msgDiv.classList.contains("message-right");
-        const encryptedMessage = msgDiv.dataset.encrypted;
-        const iv = msgDiv.dataset.iv;
-        const keyForMe = isMe ? msgDiv.dataset.keySender : msgDiv.dataset.keyRecipient;
-        const mediaUrl = msgDiv.dataset.media;
+  console.log("Decrypting old messages...");
+  const messages = Array.from(chatContainer.querySelectorAll(".message")).reverse(); // newer messages first
+  for(const msgDiv of messages){
+      const msgEl = msgDiv.querySelector("span");
+      const isMe = msgDiv.classList.contains("message-right");
+      const encryptedMessage = msgDiv.dataset.encrypted;
+      const iv = msgDiv.dataset.iv;
+      const keyForMe = isMe ? msgDiv.dataset.keySender : msgDiv.dataset.keyRecipient;
+      const mediaUrl = msgDiv.dataset.media;
 
-        console.log("Old message data:", {encryptedMessage, keyForMe, iv, mediaUrl, isMe});
+      if(mediaUrl){ continue; } // Skip media messages
+      if(!encryptedMessage || !iv || !keyForMe){ msgEl.textContent = "[Fehler beim Entschlüsseln]"; continue; }
 
-        // Skip media messages
-        if(mediaUrl){
-            console.log("Skipping decryption for media:", mediaUrl);
-            continue;
-        }
-
-        if(!encryptedMessage || !iv || !keyForMe){
-            msgEl.textContent = "[Fehler beim Entschlüsseln]";
-            continue;
-        }
-
-        msgEl.textContent = await decryptMessageAES(encryptedMessage, keyForMe, iv);
-        console.log("Decrypted old message:", msgEl.textContent);
-    }
+      try {
+          msgEl.textContent = await decryptMessageAES(encryptedMessage, keyForMe, iv);
+      } catch(err){
+          console.error("Decrypt error for old message:", err);
+          msgEl.textContent = "[Fehler beim Entschlüsseln]";
+      }
+  }
 }
 
 
