@@ -20,6 +20,17 @@ class Message(models.Model):
     encrypted_key_sender = models.TextField(blank=True)  
     iv = models.TextField(blank=True)  
     timestamp = models.DateTimeField(auto_now_add=True)
+    TEXT = "text"
+    MEDIA = "media"
+    GIF = "gif"
+
+    TYPE_CHOICES = [
+        (TEXT, "Text"),
+        (MEDIA, "Media"),
+        (GIF, "GIF"),
+    ]
+
+    message_type = models.CharField(max_length=10, choices=TYPE_CHOICES)
     def __str__(self):
         if self.media:
             return f"Media message from {self.sender.username} at {self.timestamp}"
@@ -32,7 +43,11 @@ class GIF(models.Model):
     price = models.IntegerField(default=0)  # will save in MEDIA_ROOT/gifs/
 
     def __str__(self):
-        return self.name# Create your models here.
+        return self.name
+    
+    
+    
+    # Create your models here.
 
 
     

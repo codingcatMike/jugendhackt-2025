@@ -2,40 +2,7 @@
 {% block title %}Chat mit - {{ chat.user2.username }}{% endblock title %}
 {% load static %}
 {% block content %}
-<style>
-body{margin:0;padding:0;font-family:sans-serif;height:93vh;overflow:hidden;width:100vw;}
-.main-layout{display:flex;height:100vh;width:100vw;}
-.chat-list{width:280px;border-right:1px solid #ddd;overflow-y:auto;background:#f5f5f5;}
-.chat-list h3{padding:15px;margin:0;background:#e0e0e0;}
-.chat-item{padding:12px 15px;border-bottom:1px solid #eee;cursor:pointer;display:flex;justify-content:space-between;}
-.chat-item.active{background:#d4f5d0;}
-.chat-area{flex:1;display:flex;flex-direction:column;background:#dddddd9c;position:relative;overflow:hidden;}
-.header-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #ddd;background:#fff;}
-.log-note{margin:8px 15px;font-size:12px;color:#666;}
-.coin-box{display:flex;align-items:center;gap:10px;}
-.coin-count{background:#ffefc6;padding:6px 10px;border-radius:8px;font-weight:600;}
-.messages-scroll{flex:1;overflow-y:auto;padding:10px 10px 160px;display:flex;flex-direction:column;gap:10px;height:calc(100vh - 160px);box-sizing:border-box;}
-.message{max-width:70%;padding:10px 15px;border-radius:15px;word-wrap:break-word;}
-.message-left{background:#f1f1f1;align-self:flex-start;}
-.message-right{background:#9cbeff;color:#fff;align-self:flex-end;}
-.chat-input{position:fixed;bottom:0;left:280px;right:0;display:flex;flex-wrap:wrap;gap:10px;padding:10px;border-top:1px solid #ddd;background:#fff;z-index:10;box-shadow:0 -2px 5px rgba(0,0,0,.05);}
-.chat-input input[type="text"]{flex:1;padding:10px;border-radius:10px;border:1px solid #ccc;}
-.chat-input input[type="file"]{display:none;}
-.chat-input button{padding:10px 15px;border-radius:10px;border:none;background:#9cbeff;color:#fff;cursor:pointer;}
-.file-upload-wrapper{display:flex;align-items:center;gap:10px;}
-.file-upload-btn{background:#9cbeff;color:#fff;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px;border:none;display:inline-block;}
-.file-upload-btn:hover{background:#7aa6f0;}
-.file-name{font-size:13px;color:#666;}
-.gif-menu{position:absolute;bottom:60px;left:10px;background:#fff;border:1px solid #ccc;padding:10px;border-radius:10px;width:320px;box-shadow:0 3px 10px rgba(0,0,0,.2);display:none;max-height:300px;overflow-y:auto;}
-.gif-item{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;cursor:pointer;}
-.gif-item img{width:100px;border-radius:8px;}
-.gif-price{background:#eee;border-radius:8px;padding:3px 8px;font-size:13px;margin-left:10px;}
-.keygen-btn,#startChatBtn{margin:10px;padding:8px 12px;border:none;border-radius:8px;background:#9cbeff;color:#fff;cursor:pointer;}
-.error-msg{color:red;font-size:13px;margin-left:10px;}
-.message img{border-radius:8px;max-width:120px;display:block;}
-</style>
-
-
+<link rel="stylesheet" type="text/css" href="{% static 'css/chat.css' %}">    
 
 <div id="coinCount" style="display:none;">
  {% with user.profile_set.first as profile %}
@@ -63,7 +30,6 @@ body{margin:0;padding:0;font-family:sans-serif;height:93vh;overflow:hidden;width
         {% endif %}
       </small>
     </div>
-
     {% empty %}
       <p style="padding:10px;">Keine Chats vorhanden.</p>
     {% endfor %}
@@ -74,14 +40,12 @@ body{margin:0;padding:0;font-family:sans-serif;height:93vh;overflow:hidden;width
     <div class="header-row">
       <div>
         <button class="keygen-btn" id="generateKeysBtn">🔑 Generate / Upload Keys</button>
-        <button class="keygen-btn" onclick="location.href = '/keys/'">Key Management</button>
         <div class="log-note">Tipp: (Re)generate oder upload keys wenn Entschlüsselung fehlschlägt.</div>
       </div>
       {% if chat.activated == False %}
       {% if chat.user2 == request.user %}
         <div style="color:green; font-weight:600;">Dieser Chat ist noch nicht aktiviert! Bitte bestätige den Chat, um Nachrichten zu senden.</div>
         <button onclick="window.location.href='{% url 'activate_chat' chat.id %}'" style="margin-left:10px; padding:6px 10px; border:none; border-radius:8px; background:#9cbeff; color:white; cursor:pointer;">Chat bestätigen</button>
-      
         {% else %}
       <div style="color:red; font-weight:600;">Dieser Chat ist noch nicht aktiviert! Bitte warte auf die Bestätigung des anderen Nutzers.</div>
       {% endif %}
@@ -101,16 +65,15 @@ body{margin:0;padding:0;font-family:sans-serif;height:93vh;overflow:hidden;width
           data-iv="{{ message.iv|default:'' }}"
           {% if message.media %}data-media="{{ message.media.url }}"{% endif %}>
           {% if message.media %}
-              <img src="{{ message.media.url }}" width="120">
+              <img src="{{ message.media.url }}" width="120" loading="lazy">
           {% else %}
               <strong>{{ message.sender.username }}:</strong>
               <span>{{ message.content }}</span>
           {% endif %}
           <em>({{ message.timestamp }})</em>
       </div>
-
       {% endfor %}
-  </div>
+    </div>
 
     <div class="chat-input">
       <input type="text" id="messageInput" placeholder="Schreibe eine Nachricht...">
@@ -130,317 +93,457 @@ body{margin:0;padding:0;font-family:sans-serif;height:93vh;overflow:hidden;width
 </div>
 
 <script>
+window.chatConfig = {
+    chatId: "{{ chat.id }}",
+    username: "{{ request.user.username }}",
+    recipientId: "{% if chat.user1 == request.user %}{{ chat.user2.id }}{% else %}{{ chat.user1.id }}{% endif %}"
+};
+</script>
+
+<script>
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("DOM loaded. Initializing chat JS...");
-  const chatContainer = document.getElementById("chatContainer");
-  const messageInput = document.getElementById("messageInput");
-  const mediaInput = document.getElementById("mediaInput");
-  const sendBtn = document.getElementById("sendBtn");
-  const gifBtn = document.getElementById("gifShopBtn");
-  const gifMenu = document.getElementById("gifMenu");
-  const fileName = document.getElementById("fileName");
-  const errorMsg = document.getElementById("errorMsg");
-  const coinCountEl = document.getElementById("coinCount");
-  let userCoins = coinCountEl ? parseInt(coinCountEl.textContent || "0") : 0;
-  const coinDisplay = document.getElementById("coinDisplay");
-  coinDisplay.textContent = userCoins;
+    console.log("DOM loaded. Initializing chat JS...");
 
-  const chatId = "{{ chat.id }}";
-  const username = "{{ user.username }}";
+    const chatContainer = document.getElementById("chatContainer");
+    const messageInput = document.getElementById("messageInput");
+    const mediaInput = document.getElementById("mediaInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const gifBtn = document.getElementById("gifShopBtn");
+    const gifMenu = document.getElementById("gifMenu");
+    const fileName = document.getElementById("fileName");
+    const errorMsg = document.getElementById("errorMsg");
+    const coinCountEl = document.getElementById("coinCount");
+    let userCoins = coinCountEl ? parseInt(coinCountEl.textContent || "0") : 0;
+    const coinDisplay = document.getElementById("coinDisplay");
+    coinDisplay.textContent = userCoins;
 
-  // ------------------- CHAT LIST CLICK -------------------
-  const chatItems = document.querySelectorAll(".chat-item");
-  chatItems.forEach(item => {
-    item.addEventListener("click", () => {
-      const chatId = item.dataset.chatId;
-      if(chatId){
-        window.location.href = `/chat/${chatId}/`;
-      }
+    // ------------------- LAZY LOADING VARIABLES -------------------
+    let lazyPage = 1;
+    let lazyLoading = false;
+    let lazyHasMore = true;
+
+    // ------------------- CHAT LIST CLICK -------------------
+    const chatItems = document.querySelectorAll(".chat-item");
+    chatItems.forEach(item => {
+        item.addEventListener("click", () => {
+            const chatId = item.dataset.chatId;
+            if (chatId) {
+                window.location.href = `/chat/${chatId}/`;
+            }
+        });
     });
-  });
 
-  {% if user.id == chat.user1.id %}
-    const recipientId = "{{ chat.user2.id }}";
-  {% else %}
-    const recipientId = "{{ chat.user1.id }}";
-  {% endif %}
+    const chatId = window.chatConfig.chatId;
+    const username = window.chatConfig.username;
+    const recipientId = window.chatConfig.recipientId;
 
-  const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
-  const chatSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/chat/${chatId}/`);
+    const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+    const chatSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/chat/${chatId}/`);
 
-  function scrollToBottom() { if(chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight; }
-  setTimeout(scrollToBottom, 100);
+    function scrollToBottom() {
+        if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    setTimeout(scrollToBottom, 100);
 
-  chatSocket.onopen = () => console.log("WebSocket connected");
-  chatSocket.onclose = () => console.log("WebSocket closed");
+    chatSocket.onopen = () => console.log("WebSocket connected");
+    chatSocket.onclose = () => console.log("WebSocket closed");
 
-  chatSocket.onmessage = async function(e) {
-    try {
-      const data = JSON.parse(e.data);
-      console.log("WS message received:", data);
-      if(data.error){ errorMsg.textContent = data.error; return; }
-      if(typeof data.coins !== "undefined") {
-        userCoins = parseInt(data.coins);
-        coinDisplay.textContent = userCoins;
-        if(coinCountEl) coinCountEl.textContent = userCoins;
-        return;
-      }
-      if(!data.sender) return;
+    // ------------------- WS ONMESSAGE -------------------
+    chatSocket.onmessage = async function(e) {
+        try {
+            const data = JSON.parse(e.data);
+            console.log("WS message received:", data);
 
-      const msgEl = document.createElement("div");
-      const isMe = data.sender === username;
-      msgEl.className = "message " + (isMe ? "message-right" : "message-left");
+            if (data.error) {
+                errorMsg.textContent = data.error;
+                return;
+            }
 
-      if(data.media) {
-        msgEl.innerHTML = `<img src="${data.media}" width="120"><em>${data.sender}</em> <em>(${data.timestamp})</em>`;
-      } else {
-        let decryptedText = data.encrypted_message;
-        const keyForMe = isMe ? data.encrypted_key_sender : data.encrypted_key_recipient;
-        if(keyForMe && data.iv){
-          console.log("Decrypting WS message:", {encryptedMessage: data.encrypted_message, keyForMe, iv: data.iv, isMe});
-          decryptedText = await decryptMessageAES(data.encrypted_message, keyForMe, data.iv);
+            if (typeof data.coins !== "undefined") {
+                userCoins = parseInt(data.coins);
+                coinDisplay.textContent = userCoins;
+                if (coinCountEl) coinCountEl.textContent = userCoins;
+                return;
+            }
+
+            if (!data.sender) return;
+
+            const msgEl = document.createElement("div");
+            const isMe = data.sender === username;
+            msgEl.className = "message " + (isMe ? "message-right" : "message-left");
+
+            if (data.media) {
+                msgEl.innerHTML = `<img src="${data.media}" width="120" loading="lazy"><em>${data.sender}</em> <em>(${data.timestamp})</em>`;
+            } else {
+              let decryptedText = "[Fehler beim Entschlüsseln]";
+
+              const keyForMe = isMe
+                  ? data.encrypted_key_sender
+                  : data.encrypted_key_recipient;
+
+              if (keyForMe && data.iv && data.encrypted_message) {
+                  try {
+                      decryptedText = await decryptMessageAES(
+                          data.encrypted_message,
+                          keyForMe,
+                          data.iv
+                      );
+                  } catch (err) {
+                      console.error("Decrypt error for WS message:", err);
+                      decryptedText = "[Fehler beim Entschlüsseln]";
+                  }
+              }
+
+                msgEl.dataset.encrypted = data.encrypted_message || "";
+                msgEl.dataset.keySender = data.encrypted_key_sender || "";
+                msgEl.dataset.keyRecipient = data.encrypted_key_recipient || "";
+                msgEl.dataset.iv = data.iv || "";
+
+                msgEl.innerHTML = `<strong>${data.sender}:</strong> <span>${decryptedText}</span> <em>(${data.timestamp})</em>`;
+            }
+
+            chatContainer.appendChild(msgEl);
+            scrollToBottom();
+            errorMsg.textContent = "";
+        } catch (err) {
+            console.error("WS onmessage parse error:", err);
         }
-        msgEl.dataset.encrypted = data.encrypted_message || "";
-        msgEl.dataset.keySender = data.encrypted_key_sender || "";
-        msgEl.dataset.keyRecipient = data.encrypted_key_recipient || "";
-        msgEl.dataset.iv = data.iv || "";
-        msgEl.innerHTML = `<strong>${data.sender}:</strong> <span>${decryptedText}</span> <em>(${data.timestamp})</em>`;
-      }
-      chatContainer.appendChild(msgEl);
-      scrollToBottom();
-      errorMsg.textContent = "";
-    } catch(err){ console.error("WS onmessage parse error:", err); }
-  };
+    };
 
-  // ------------------- ENCRYPTION HELPERS -------------------
-  function arrayBufferToBase64(buffer) {
-    const bytes = new Uint8Array(buffer);
-    let binary = "";
-    bytes.forEach(b => binary += String.fromCharCode(b));
-    return window.btoa(binary);
-  }
-
-  function base64ToArrayBuffer(b64) {
-    const binary = window.atob(b64);
-    const bytes = new Uint8Array(binary.length);
-    for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
-    return bytes.buffer;
-  }
-
-  async function importPublicKey(base64) {
-    return crypto.subtle.importKey(
-      "spki",
-      base64ToArrayBuffer(base64),
-      { name: "RSA-OAEP", hash: "SHA-256" },
-      true,
-      ["encrypt"]
-    );
-  }
-
-  async function importPrivateKey(base64) {
-    return crypto.subtle.importKey(
-      "pkcs8",
-      base64ToArrayBuffer(base64),
-      { name: "RSA-OAEP", hash: "SHA-256" },
-      true,
-      ["decrypt"]
-    );
-  }
-
-  async function encryptMessageAES(message) {
-    const aesKey = await crypto.subtle.generateKey({ name:"AES-GCM", length:256 }, true, ["encrypt"]);
-    const encoder = new TextEncoder();
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const ciphertext = await crypto.subtle.encrypt({ name:"AES-GCM", iv }, aesKey, encoder.encode(message));
-    const rawAesKey = await crypto.subtle.exportKey("raw", aesKey);
-    return { ciphertext, rawAesKey, iv };
-  }
-
-  async function encryptAESKeyRSA(rawAesKey, recipientPublicKey) {
-    return crypto.subtle.encrypt({ name:"RSA-OAEP" }, recipientPublicKey, rawAesKey);
-  }
-
-  async function decryptMessageAES(cipherTextB64, encryptedKeyB64, ivB64) {
-    try {
-      const privateKeyB64 = localStorage.getItem("privateKey_" + username);
-      if(!privateKeyB64) throw new Error("Private key not found in localStorage");
-      const privateKey = await importPrivateKey(privateKeyB64);
-      const encryptedKey = base64ToArrayBuffer(encryptedKeyB64);
-      const aesKeyRaw = await crypto.subtle.decrypt({ name:"RSA-OAEP" }, privateKey, encryptedKey);
-      const aesKey = await crypto.subtle.importKey("raw", aesKeyRaw, { name:"AES-GCM" }, false, ["decrypt"]);
-      const iv = base64ToArrayBuffer(ivB64);
-      const cipherBytes = base64ToArrayBuffer(cipherTextB64);
-      const decrypted = await crypto.subtle.decrypt({ name:"AES-GCM", iv }, aesKey, cipherBytes);
-      return new TextDecoder().decode(decrypted);
-    } catch(err){
-      console.error("Decrypt error:", err);
-      return "[Fehler beim Entschlüsseln]";
-    }
-  }
-
-  // ------------------- LOAD RECIPIENT PUBLIC KEY -------------------
-  async function getRecipientPublicKey() {
-    try {
-      const res = await fetch(`/api/get-public-key/${recipientId}/`);
-      if(!res.ok) throw new Error("Fehler beim Laden der öffentlichen Schlüssel");
-      return await res.text();
-    } catch(err) {
-      console.error(err);
-      errorMsg.textContent = "Kann den öffentlichen Schlüssel des Empfängers nicht laden.";
-      return null;
-    }
-  }
-
-  // ------------------- SEND MESSAGE -------------------
-  async function sendMessage(message, recipientPublicKeyB64, mediaData=null, isGif=false, price=0) {
-    try {
-      let payload = {};
-      if(mediaData) {
-        payload = { media: mediaData, media_type:isGif?"gif":"image", price };
-      } else {
-        const { ciphertext, rawAesKey, iv } = await encryptMessageAES(message);
-        const recipientKey = await importPublicKey(recipientPublicKeyB64);
-        const senderPublicKeyB64 = localStorage.getItem("publicKey_" + username);
-        const senderKey = await importPublicKey(senderPublicKeyB64);
-        const encryptedKeyRecipient = await encryptAESKeyRSA(rawAesKey, recipientKey);
-        const encryptedKeySender = await encryptAESKeyRSA(rawAesKey, senderKey);
-
-        payload = {
-          encrypted_message: arrayBufferToBase64(ciphertext),
-          encrypted_key_recipient: arrayBufferToBase64(encryptedKeyRecipient),
-          encrypted_key_sender: arrayBufferToBase64(encryptedKeySender),
-          iv: arrayBufferToBase64(iv)
-        };
-      }
-
-      chatSocket.send(JSON.stringify(payload));
-    } catch(err) {
-      console.error("Encryption error:", err);
-      errorMsg.textContent = "Fehler bei der Verschlüsselung!";
-    }
-  }
-
-  // ------------------- SEND BUTTON -------------------
-  sendBtn.addEventListener("click", async () => {
-    const msg = messageInput.value.trim();
-    const mediaFile = mediaInput.files[0];
-    const recipientPublicKeyB64 = await getRecipientPublicKey();
-    if(!recipientPublicKeyB64) return;
-    if(!msg && !mediaFile) return;
-    errorMsg.textContent="";
-
-    if(mediaFile) {
-      const reader = new FileReader();
-      reader.onload = async function() { await sendMessage(null, recipientPublicKeyB64, reader.result, false, 0); scrollToBottom(); };
-      reader.readAsDataURL(mediaFile);
-    } else {
-      await sendMessage(msg, recipientPublicKeyB64);
-      scrollToBottom();
+    // ------------------- ENCRYPTION HELPERS -------------------
+    function arrayBufferToBase64(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binary = "";
+        bytes.forEach(b => binary += String.fromCharCode(b));
+        return window.btoa(binary);
     }
 
-    messageInput.value="";
-    mediaInput.value="";
-    fileName.textContent="";
-  });
+    function base64ToArrayBuffer(b64) {
+        const binary = window.atob(b64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return bytes.buffer;
+    }
 
-  messageInput.addEventListener("keyup", e=>{ if(e.key==="Enter") sendBtn.click(); });
+    async function importPublicKey(base64) {
+        return crypto.subtle.importKey(
+            "spki",
+            base64ToArrayBuffer(base64),
+            { name: "RSA-OAEP", hash: "SHA-256" },
+            true,
+            ["encrypt"]
+        );
+    }
 
-  // ------------------- GIF SHOP -------------------
-  gifBtn.addEventListener("click", async () => {
-    if(gifMenu.style.display==="block"){ gifMenu.style.display="none"; return; }
-    try {
-      const res = await fetch("/api/gifs/");
-      if(!res.ok) throw new Error("Fehler beim Laden der GIF-Liste");
-      const gifs = await res.json();
-      gifMenu.innerHTML = gifs.map(gif=>`
-        <div class="gif-item" data-url="${gif.url}" data-price="${gif.price}">
-          <img src="${gif.url}" alt="${gif.name}"><span class="gif-price">🪙 ${gif.price}</span>
-        </div>
-      `).join("");
-      gifMenu.style.display="block";
+    async function importPrivateKey(base64) {
+        return crypto.subtle.importKey(
+            "pkcs8",
+            base64ToArrayBuffer(base64),
+            { name: "RSA-OAEP", hash: "SHA-256" },
+            true,
+            ["decrypt"]
+        );
+    }
 
-      gifMenu.querySelectorAll(".gif-item").forEach(item=>{
-        item.addEventListener("click", async ()=>{
-          const price = parseInt(item.dataset.price);
-          const url = item.dataset.url;
-          if(userCoins < price){ errorMsg.textContent="Nicht genügend Coins!"; return; }
-          errorMsg.textContent="Sende GIF...";
-          gifMenu.style.display="none";
-          try {
-            const blobRes = await fetch(url);
-            if(!blobRes.ok) throw new Error("Fehler beim Laden des GIFs");
-            const blob = await blobRes.blob();
+    async function encryptMessageAES(message) {
+        const aesKey = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt"]);
+        const encoder = new TextEncoder();
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, aesKey, encoder.encode(message));
+        const rawAesKey = await crypto.subtle.exportKey("raw", aesKey);
+        return { ciphertext, rawAesKey, iv };
+    }
+
+    async function encryptAESKeyRSA(rawAesKey, recipientPublicKey) {
+        return crypto.subtle.encrypt({ name: "RSA-OAEP" }, recipientPublicKey, rawAesKey);
+    }
+
+    async function decryptMessageAES(cipherTextB64, encryptedKeyB64, ivB64) {
+        try {
+            const privateKeyB64 = localStorage.getItem("privateKey_" + username);
+            if (!privateKeyB64) throw new Error("Private key not found in localStorage");
+            const privateKey = await importPrivateKey(privateKeyB64);
+            const encryptedKey = base64ToArrayBuffer(encryptedKeyB64);
+            const aesKeyRaw = await crypto.subtle.decrypt({ name: "RSA-OAEP" }, privateKey, encryptedKey);
+            const aesKey = await crypto.subtle.importKey("raw", aesKeyRaw, { name: "AES-GCM" }, false, ["decrypt"]);
+            const iv = base64ToArrayBuffer(ivB64);
+            const cipherBytes = base64ToArrayBuffer(cipherTextB64);
+            const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, aesKey, cipherBytes);
+            return new TextDecoder().decode(decrypted);
+        } catch (err) {
+            console.error("Decrypt error:", err);
+            return "[Fehler beim Entschlüsseln]";
+        }
+    }
+
+    // ------------------- LOAD RECIPIENT PUBLIC KEY -------------------
+    async function getRecipientPublicKey() {
+        try {
+            const res = await fetch(`/api/get-public-key/${recipientId}/`);
+            if (!res.ok) throw new Error("Fehler beim Laden der öffentlichen Schlüssel");
+            return await res.text();
+        } catch (err) {
+            console.error(err);
+            errorMsg.textContent = "Kann den öffentlichen Schlüssel des Empfängers nicht laden.";
+            return null;
+        }
+    }
+
+    // ------------------- SEND MESSAGE -------------------
+    async function sendMessage(message, recipientPublicKeyB64, mediaData = null, isGif = false, price = 0) {
+        try {
+            let payload = {};
+            if (mediaData) {
+                payload = { media: mediaData, media_type: isGif ? "gif" : "image", price };
+            } else {
+                const { ciphertext, rawAesKey, iv } = await encryptMessageAES(message);
+                const recipientKey = await importPublicKey(recipientPublicKeyB64);
+                const senderPublicKeyB64 = localStorage.getItem("publicKey_" + username);
+                const senderKey = await importPublicKey(senderPublicKeyB64);
+                const encryptedKeyRecipient = await encryptAESKeyRSA(rawAesKey, recipientKey);
+                const encryptedKeySender = await encryptAESKeyRSA(rawAesKey, senderKey);
+
+                payload = {
+                    encrypted_message: arrayBufferToBase64(ciphertext),
+                    encrypted_key_recipient: arrayBufferToBase64(encryptedKeyRecipient),
+                    encrypted_key_sender: arrayBufferToBase64(encryptedKeySender),
+                    iv: arrayBufferToBase64(iv)
+                };
+            }
+
+            chatSocket.send(JSON.stringify(payload));
+        } catch (err) {
+            console.error("Encryption error:", err);
+            errorMsg.textContent = "Fehler bei der Verschlüsselung!";
+        }
+    }
+
+    // ------------------- SEND BUTTON -------------------
+    sendBtn.addEventListener("click", async () => {
+        const msg = messageInput.value.trim();
+        const mediaFile = mediaInput.files[0];
+        const recipientPublicKeyB64 = await getRecipientPublicKey();
+        if (!recipientPublicKeyB64) return;
+        if (!msg && !mediaFile) return;
+        errorMsg.textContent = "";
+
+        if (mediaFile) {
             const reader = new FileReader();
             reader.onload = async function() {
-              const recipientPublicKeyB64 = await getRecipientPublicKey();
-              if(!recipientPublicKeyB64) return;
-              await sendMessage(null, recipientPublicKeyB64, reader.result, true, price);
-              errorMsg.textContent="";
-              scrollToBottom();
+                await sendMessage(null, recipientPublicKeyB64, reader.result, false, 0);
+                scrollToBottom();
             };
-            reader.readAsDataURL(blob);
-          } catch(err){ console.error(err); errorMsg.textContent="Fehler beim Laden der GIF-Datei!"; }
-        });
-      });
-    } catch(err){ console.error(err); errorMsg.textContent="Fehler beim Laden der GIFs."; }
-  });
+            reader.readAsDataURL(mediaFile);
+        } else {
+            await sendMessage(msg, recipientPublicKeyB64);
+            scrollToBottom();
+        }
 
-  mediaInput.addEventListener("change", ()=>{ fileName.textContent = mediaInput.files.length>0 ? mediaInput.files[0].name : ""; });
+        messageInput.value = "";
+        mediaInput.value = "";
+        fileName.textContent = "";
+    });
 
-  // ------------------- KEY GENERATION -------------------
-  const generateKeysBtn = document.getElementById("generateKeysBtn");
-  generateKeysBtn.addEventListener("click", ()=>generateAndUploadKeys());
+    messageInput.addEventListener("keyup", e => {
+        if (e.key === "Enter") sendBtn.click();
+    });
 
-  async function generateAndUploadKeys() {
-    const uploadUrl="/upload_public_key/";
-    try {
-      const keyPair = await crypto.subtle.generateKey(
-        { name:"RSA-OAEP", modulusLength:2048, publicExponent:new Uint8Array([1,0,1]), hash:"SHA-256" },
-        true, ["encrypt","decrypt"]
-      );
-      const publicKeyB64 = arrayBufferToBase64(await crypto.subtle.exportKey("spki", keyPair.publicKey));
-      const privateKeyB64 = arrayBufferToBase64(await crypto.subtle.exportKey("pkcs8", keyPair.privateKey));
-      localStorage.setItem("privateKey_" + username, privateKeyB64);
-      localStorage.setItem("publicKey_" + username, publicKeyB64);
+    // ------------------- GIF SHOP -------------------
+    gifBtn.addEventListener("click", async () => {
+        if (gifMenu.style.display === "block") {
+            gifMenu.style.display = "none";
+            return;
+        }
+        try {
+            const res = await fetch("/api/gifs/");
+            if (!res.ok) throw new Error("Fehler beim Laden der GIF-Liste");
+            const gifs = await res.json();
+            gifMenu.innerHTML = gifs.map(gif => `
+                <div class="gif-item" data-url="${gif.url}" data-price="${gif.price}">
+                    <img src="${gif.url}" alt="${gif.name}" loading="lazy">
+                    <span class="gif-price">🪙 ${gif.price}</span>
+                </div>
+            `).join("");
+            gifMenu.style.display = "block";
 
-      const res = await fetch(uploadUrl, {
-        method:"POST",
-        headers:{ "Content-Type":"application/json","X-CSRFToken": getCSRFToken() },
-        body: JSON.stringify({ username, chat_id:chatId, public_key:publicKeyB64, algorithm:"RSA-OAEP-2048-SHA256" })
-      });
-      if(!res.ok){ const text=await res.text(); throw new Error(text); }
-      alert("Keys generated & uploaded ✓");
-    } catch(err){ console.error(err); alert("Fehler beim Key-Upload: "+err.message); }
-  }
+            gifMenu.querySelectorAll(".gif-item").forEach(item => {
+                item.addEventListener("click", async () => {
+                    const price = parseInt(item.dataset.price);
+                    const url = item.dataset.url;
+                    if (userCoins < price) {
+                        errorMsg.textContent = "Nicht genügend Coins!";
+                        return;
+                    }
+                    errorMsg.textContent = "Sende GIF...";
+                    gifMenu.style.display = "none";
+                    try {
+                        const blobRes = await fetch(url);
+                        if (!blobRes.ok) throw new Error("Fehler beim Laden des GIFs");
+                        const blob = await blobRes.blob();
+                        const reader = new FileReader();
+                        reader.onload = async function() {
+                            const recipientPublicKeyB64 = await getRecipientPublicKey();
+                            if (!recipientPublicKeyB64) return;
+                            await sendMessage(null, recipientPublicKeyB64, reader.result, true, price);
+                            errorMsg.textContent = "";
+                            scrollToBottom();
+                        };
+                        reader.readAsDataURL(blob);
+                    } catch (err) {
+                        console.error(err);
+                        errorMsg.textContent = "Fehler beim Laden der GIF-Datei!";
+                    }
+                });
+            });
+        } catch (err) {
+            console.error(err);
+            errorMsg.textContent = "Fehler beim Laden der GIFs.";
+        }
+    });
 
-  function getCSRFToken(){ const cookieValue=document.cookie.split("; ").find(row=>row.startsWith("csrftoken=")); return cookieValue?cookieValue.split("=")[1]:""; }
+    mediaInput.addEventListener("change", () => {
+        fileName.textContent = mediaInput.files.length > 0 ? mediaInput.files[0].name : "";
+    });
 
-  // ------------------- DECRYPT OLD MESSAGES ON LOAD -------------------
-  async function decryptOldMessages() {
-  console.log("Decrypting old messages...");
-  const messages = Array.from(chatContainer.querySelectorAll(".message")).reverse(); // newer messages first
-  for(const msgDiv of messages){
-      const msgEl = msgDiv.querySelector("span");
-      const isMe = msgDiv.classList.contains("message-right");
-      const encryptedMessage = msgDiv.dataset.encrypted;
-      const iv = msgDiv.dataset.iv;
-      const keyForMe = isMe ? msgDiv.dataset.keySender : msgDiv.dataset.keyRecipient;
-      const mediaUrl = msgDiv.dataset.media;
+    // ------------------- KEY GENERATION -------------------
+    const generateKeysBtn = document.getElementById("generateKeysBtn");
+    generateKeysBtn.addEventListener("click", () => generateAndUploadKeys());
 
-      if(mediaUrl){ continue; } // Skip media messages
-      if(!encryptedMessage || !iv || !keyForMe){ msgEl.textContent = "[Fehler beim Entschlüsseln]"; continue; }
+    async function generateAndUploadKeys() {
+        const uploadUrl = "/upload_public_key/";
+        try {
+            const keyPair = await crypto.subtle.generateKey({
+                name: "RSA-OAEP",
+                modulusLength: 2048,
+                publicExponent: new Uint8Array([1, 0, 1]),
+                hash: "SHA-256"
+            }, true, ["encrypt", "decrypt"]);
 
-      try {
-          msgEl.textContent = await decryptMessageAES(encryptedMessage, keyForMe, iv);
-      } catch(err){
-          console.error("Decrypt error for old message:", err);
-          msgEl.textContent = "[Fehler beim Entschlüsseln]";
-      }
-  }
-}
+            const publicKeyB64 = arrayBufferToBase64(await crypto.subtle.exportKey("spki", keyPair.publicKey));
+            const privateKeyB64 = arrayBufferToBase64(await crypto.subtle.exportKey("pkcs8", keyPair.privateKey));
 
+            localStorage.setItem("privateKey_" + username, privateKeyB64);
+            localStorage.setItem("publicKey_" + username, publicKeyB64);
 
-  decryptOldMessages();
+            const res = await fetch(uploadUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCSRFToken()
+                },
+                body: JSON.stringify({
+                    username,
+                    chat_id: chatId,
+                    public_key: publicKeyB64,
+                    algorithm: "RSA-OAEP-2048-SHA256"
+                })
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text);
+            }
+
+            alert("Keys generated & uploaded ✓");
+        } catch (err) {
+            console.error(err);
+            alert("Fehler beim Key-Upload: " + err.message);
+        }
+    }
+
+    function getCSRFToken() {
+        const cookieValue = document.cookie.split("; ").find(row => row.startsWith("csrftoken="));
+        return cookieValue ? cookieValue.split("=")[1] : "";
+    }
+
+    // ------------------- DECRYPT OLD MESSAGES -------------------
+    async function decryptOldMessages() {
+        console.log("Decrypting old messages...");
+        const messages = Array.from(chatContainer.querySelectorAll(".message")).reverse();
+        for (const msgDiv of messages) {
+            const msgEl = msgDiv.querySelector("span");
+            const isMe = msgDiv.classList.contains("message-right");
+            const encryptedMessage = msgDiv.dataset.encrypted;
+            const iv = msgDiv.dataset.iv;
+            const keyForMe = isMe ? msgDiv.dataset.keySender : msgDiv.dataset.keyRecipient;
+            const mediaUrl = msgDiv.dataset.media;
+
+            // Skip media or messages without span
+            if (mediaUrl || !msgEl) continue;
+
+            if (!encryptedMessage || !iv || !keyForMe) {
+                msgEl.textContent = "[Fehler beim Entschlüsseln]";
+                continue;
+            }
+
+            try {
+                msgEl.textContent = await decryptMessageAES(encryptedMessage, keyForMe, iv);
+            } catch (err) {
+                console.error("Decrypt error for old message:", err);
+                msgEl.textContent = "[Fehler beim Entschlüsseln]";
+            }
+        }
+    }
+
+    decryptOldMessages();
+
+    // ------------------- LAZY LOAD OLDER MESSAGES -------------------
+    async function loadOlderMessages() {
+        if (lazyLoading || !lazyHasMore) return;
+
+        lazyLoading = true;
+        lazyPage++;
+
+        const oldHeight = chatContainer.scrollHeight;
+
+        try {
+            const res = await fetch(`/chat/${chatConfig.chatId}/load/?page=${lazyPage}`);
+            if (!res.ok) throw new Error("Load failed");
+
+            const data = await res.json();
+            lazyHasMore = data.has_more;
+
+            data.messages.reverse().forEach(msg => {
+                const el = document.createElement("div");
+                el.className = "message " + (msg.is_me ? "message-right" : "message-left");
+
+                if (msg.media) {
+                    el.innerHTML = `
+                        <img src="${msg.media}" width="120" loading="lazy">
+                        <em>(${msg.timestamp})</em>
+                    `;
+                } else {
+                    el.dataset.encrypted = msg.encrypted_message;
+                    el.dataset.keySender = msg.encrypted_key_sender;
+                    el.dataset.keyRecipient = msg.encrypted_key_recipient;
+                    el.dataset.iv = msg.iv;
+
+                    el.innerHTML = `
+                        <strong>${msg.sender}:</strong>
+                        <span>[decrypting...]</span>
+                        <em>(${msg.timestamp})</em>
+                    `;
+                }
+
+                chatContainer.prepend(el);
+            });
+
+            await decryptOldMessages();
+
+            chatContainer.scrollTop = chatContainer.scrollHeight - oldHeight;
+
+        } catch (err) {
+            console.error("Lazy load error:", err);
+        }
+
+        lazyLoading = false;
+    }
+
+    chatContainer.addEventListener("scroll", () => {
+        if (chatContainer.scrollTop < 50) {
+            loadOlderMessages();
+        }
+    });
 });
 </script>
 

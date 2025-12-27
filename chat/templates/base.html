@@ -197,6 +197,7 @@
 </head>
 <body>
     <nav>
+        <a href="{% url 'index' %}">Home</a>
         <a href="{% url 'chat' %}">Messenger</a>
         {% if not request.user.is_authenticated %}
         <a href="{% url 'login' %}">Login</a>

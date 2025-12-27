@@ -7,6 +7,11 @@ from django.contrib.auth.models import User
 from auth_man.models import Profile
 from .models import Chat, Message, GIF
 import json
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
+from .models import Message, Chat
+
 
 
 def check(request):
@@ -43,7 +48,9 @@ def chat(request, id=None):
     user_chats = user_chats.annotate(last_msg_time=Max('messages__timestamp'))
 
     # Nachrichten des aktuellen Chats nach Zeit (neueste unten)
-    messages = Message.objects.filter(chat=chat).order_by('timestamp') if chat else []
+    messages = Message.objects.filter(chat=chat).order_by("-timestamp")[:20] if chat else []
+    messages = reversed(messages)
+
 
     return render(request, 'chat.html', {
         "chat": chat,
@@ -176,3 +183,40 @@ def import_private_key(request):
 
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
+
+
+@login_required
+def load_messages(request, chat_id):
+    page = int(request.GET.get("page", 1))
+
+    try:
+        chat = Chat.objects.get(id=chat_id)
+    except Chat.DoesNotExist:
+        return JsonResponse({"error": "Chat not found"}, status=404)
+
+    if request.user not in [chat.user1, chat.user2]:
+        return JsonResponse({"error": "Forbidden"}, status=403)
+
+    qs = Message.objects.filter(chat=chat).order_by("-timestamp")
+
+    paginator = Paginator(qs, 20)  # 👈 batch size
+    page_obj = paginator.get_page(page)
+
+    messages = []
+    for m in page_obj.object_list:
+        messages.append({
+            "id": m.id,
+            "sender": m.sender.username,
+            "encrypted_message": m.content,
+            "encrypted_key_sender": m.encrypted_key_sender,
+            "encrypted_key_recipient": m.encrypted_key_recipient,
+            "iv": m.iv,
+            "media": m.media.url if m.media else None,
+            "timestamp": m.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+            "is_me": m.sender == request.user,
+        })
+
+    return JsonResponse({
+        "messages": messages,
+        "has_more": page_obj.has_next()
+    })
