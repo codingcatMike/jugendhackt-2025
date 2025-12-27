@@ -13,9 +13,9 @@
   {% endif %}
   {% endwith %}
 </div>
-
 <div class="main-layout">
-  <div class="chat-list" id="chatList">
+  <div id="searchResults" style="overflow-y: auto; max-height: 100%; background-color: #f5f5f5"></div>
+  <div class="chat-list "  id="chatList ">
     <h3>Chats</h3>
     {% for c in user_chats %}
     <div class="chat-item {% if c.id == chat.id %}active{% endif %}"
@@ -41,6 +41,15 @@
       <div>
         <button class="keygen-btn" id="generateKeysBtn">🔑 Generate / Upload Keys</button>
         <div class="log-note">Tipp: (Re)generate oder upload keys wenn Entschlüsselung fehlschlägt.</div>
+        <input 
+    type="text" 
+    id="messageSearch" 
+    placeholder="Search messages..." 
+    style="width: 100%; padding: 8px; margin-bottom: 10px;"
+>
+
+
+
       </div>
       {% if chat.activated == False %}
       {% if chat.user2 == request.user %}
@@ -60,6 +69,7 @@
       {% for message in messages %}
       <div class="message {% if message.sender == user %}message-right{% else %}message-left{% endif %}"
           data-encrypted="{{ message.content|safe }}"
+          id="msg-{{ message.id }}"
           data-key-sender="{{ message.encrypted_key_sender|default:'' }}"
           data-key-recipient="{{ message.encrypted_key_recipient|default:'' }}"
           data-iv="{{ message.iv|default:'' }}"
@@ -70,6 +80,7 @@
               <strong>{{ message.sender.username }}:</strong>
               <span>{{ message.content }}</span>
           {% endif %}
+
           <em>({{ message.timestamp }})</em>
       </div>
       {% endfor %}
@@ -504,8 +515,10 @@ document.addEventListener("DOMContentLoaded", () => {
             lazyHasMore = data.has_more;
 
             data.messages.reverse().forEach(msg => {
-                const el = document.createElement("div");
-                el.className = "message " + (msg.is_me ? "message-right" : "message-left");
+            const el = document.createElement("div");
+            el.id = "msg-" + msg.id; // NEW
+            el.className = "message " + (msg.is_me ? "message-right" : "message-left");
+
 
                 if (msg.media) {
                     el.innerHTML = `
@@ -544,7 +557,123 @@ document.addEventListener("DOMContentLoaded", () => {
             loadOlderMessages();
         }
     });
+    async function searchMessages(query) {
+    const resultsContainer = document.getElementById("searchResults");
+
+    resultsContainer.innerHTML = "Searching...";
+
+    let page = 1;
+    let hasMore = true;
+    let matches = [];
+    const { chatId } = window.chatConfig;
+
+
+    while (hasMore) {
+        const res = await fetch(`/chat/${window.chatConfig.chatId}/load/?page=${page}`);
+
+        if (!res.ok) break;
+
+        const data = await res.json();
+        for (const msg of data.messages) {
+            let decryptedText = "[Decryption error]";
+            try {
+                const keyForMe = msg.is_me ? msg.encrypted_key_sender : msg.encrypted_key_recipient;
+                if (keyForMe && msg.iv && msg.encrypted_message) {
+                    decryptedText = await decryptMessageAES(msg.encrypted_message, keyForMe, msg.iv);
+                }
+            } catch (e) {
+                console.error("Decrypt error:", e);
+            }
+
+            if (decryptedText.toLowerCase().includes(query.toLowerCase())) {
+              matches.push({
+                  id: msg.id,
+                  sender: msg.sender,
+                  text: decryptedText,
+                  timestamp: msg.timestamp,
+                  media: msg.media
+              });
+
+            }
+        }
+
+        hasMore = data.has_more;
+        page++;
+    }
+
+      if (matches.length === 0) {
+          resultsContainer.innerHTML = "<p>No messages found.</p>";
+      } else {
+          resultsContainer.innerHTML = matches.map(m => {
+              let mediaHtml = m.media ? '<br><img src="' + m.media + '" width="100" loading="lazy">' : '';
+              return '<div class="search-result" data-msg-id="' + m.id + '" style="padding:5px; border-bottom:1px solid #ccc; cursor:pointer;">' +
+                  '<strong>' + m.sender + '</strong>: ' + m.text +
+                  '<br><small>' + m.timestamp + '</small>' +
+                  mediaHtml +
+              '</div>';
+          }).join('');
+
+
+          // Attach click listeners dynamically
+          resultsContainer.querySelectorAll(".search-result").forEach(el => {
+              el.addEventListener("click", () => scrollToMessage(el.dataset.msgId));
+          });
+      }
+
+
+
+    }
+
+
+document.getElementById("messageSearch").addEventListener("input", e => {
+    const query = e.target.value.trim();
+    if (query.length > 0) {
+        searchMessages(query);
+    } else {
+        document.getElementById("searchResults").innerHTML = "";
+    }
 });
+
+
+async function scrollToMessage(msgId) {
+    let msgEl = document.getElementById("msg-" + msgId);
+    const maxAttempts = 50;
+    let attempts = 0;
+
+    // Try lazy-loading older messages if needed
+    while (!msgEl && lazyHasMore && attempts < maxAttempts) {
+        await loadOlderMessages();  
+        msgEl = document.getElementById("msg-" + msgId);
+        attempts++;
+    }
+
+    if (msgEl) {
+        // Scroll within chatContainer only
+        const container = chatContainer; // already defined earlier
+        const containerTop = container.getBoundingClientRect().top;
+        const containerScrollTop = container.scrollTop;
+        const msgTop = msgEl.getBoundingClientRect().top;
+        const offset = msgTop - containerTop;
+        const targetScroll = containerScrollTop + offset - container.clientHeight / 2 + msgEl.clientHeight / 2;
+
+        container.scrollTo({
+            top: targetScroll,
+            behavior: "smooth"
+        });
+
+        // Temporary highlight
+        msgEl.style.backgroundColor = "#ffff99";
+        setTimeout(() => msgEl.style.backgroundColor = "", 2000);
+    } else {
+        alert("Nachricht konnte nicht gefunden werden (zu alt oder Fehler beim Laden).");
+    }
+}
+
+
+});
+
+
+
 </script>
 
 {% endblock content %}

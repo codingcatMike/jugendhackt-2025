@@ -334,3 +334,37 @@ def search_chats_for_user(request):
         })
 
     return JsonResponse({"results": results})
+
+
+def search_messages(request):
+    """
+    Search for messages in a chat by content.
+    """
+    query = request.GET.get("q", "").strip()
+    user = request.user
+    chat_id = request.GET.get("chat_id")
+    if not query:
+        return JsonResponse({"results": []})
+
+    # Find users by username or profile nickname
+    messages_matches = User.objects.filter(
+        Q(username__icontains=query) |
+        Q(profile__nickname__icontains=query)  # use reverse FK lookup
+    ).exclude(id=user.id)
+
+    results = []
+    for u in messages_matches:
+        # Check if a chat exists between the logged-in user and this user
+        chat = Chat.objects.filter(Q(user1=user, user2=u) | Q(user1=u, user2=user)).first()
+
+        # Get nickname from Profile if it exists
+        profile = Profile.objects.filter(user=u).first()
+        nickname = profile.nickname if profile else ""
+
+        results.append({
+            "id": chat.id if chat else None,  # chat exists?
+            "username": u.username,
+            "nickname": nickname,
+        })
+
+    return JsonResponse({"results": results})
