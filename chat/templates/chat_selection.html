@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Chat Selection{% endblock title %}
+
+{% block content %}
+<div style="padding: 20px; background-color: white; border-radius: 10px">
+    <h1>Select a Chat</h1>
+
+    <div style="margin-top: 20px; min-width: 300px;">
+        <!-- Search input -->
+        <input type="text" id="chatSearch" placeholder="Search Chats..."
+               style="width:100%; padding:10px; border:1px solid #ccc; border-radius:5px; margin-bottom:20px;"
+               onkeyup="filterChats()">
+
+        <!-- Container for dynamic chat list -->
+        <div id="chatContainer">
+            {% for chat in chats %}
+                <a href="{% url 'chat' chat.id %}" style="text-decoration:none;">
+                    <div class="chat-item" data-username1="{{ chat.user1.username }}" data-username2="{{ chat.user2.username }}" style="background-color:#f0f0f0; padding:10px; border-radius:5px; margin-bottom:10px; color:black;">
+                        Chat with 
+                        {% if chat.user2 == request.user %}
+                            {{ chat.user1.username }}
+                        {% else %}
+                            {{ chat.user2.username }}
+                        {% endif %}
+                    </div>
+                </a>
+            {% empty %}
+                <div style="background-color:#d0d0d0ff; padding:10px; border-radius:5px; margin-bottom:10px; color:black;">
+                    No chats available. Start a new chat!
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <a href="{% url 'start_chat' %}" style="text-decoration:none;">
+        <div style="background-color:#d0d0d0ff; padding:10px; border-radius:5px; margin-bottom:10px; color:black;">
+            Start New Chat
+        </div>
+    </a>
+</div>
+
+<script>
+const initialChatsHTML = document.getElementById("chatContainer").innerHTML;
+
+function filterChats() {
+    const query = document.getElementById("chatSearch").value.trim();
+    const container = document.getElementById("chatContainer");
+
+    if (!query) {
+        // Show all chats if search is empty
+        container.innerHTML = initialChatsHTML;
+        return;
+    }
+
+    container.innerHTML = ""; // clear current chats
+
+    fetch(`/search_chats_for_user/?q=${encodeURIComponent(query)}`)
+        .then(res => res.json())
+        .then(data => {
+            if (!data.results.length) {
+                container.innerHTML = `<div style="background-color:#d0d0d0ff; padding:10px; border-radius:5px; margin-bottom:10px; color:black;">
+                                            No users found.
+                                       </div>`;
+                return;
+            }
+
+            const seen = new Set(); // track duplicates
+
+            data.results.forEach(item => {
+                const uniqueKey = item.id ? `chat-${item.id}` : `user-${item.username}`;
+                if (seen.has(uniqueKey)) return; // skip duplicates
+                seen.add(uniqueKey);
+
+                const div = document.createElement("div");
+                const isExistingChat = Boolean(item.id);
+
+                // Style for new chat vs existing chat
+                div.style.cssText = `padding:10px; border-radius:5px; margin-bottom:10px;
+                                     background-color:${isExistingChat ? '#f0f0f0' : '#e0f7fa'};
+                                     color:black; font-style:${isExistingChat ? 'normal' : 'italic'};`;
+
+                const displayName = item.nickname || item.username;
+                const href = isExistingChat ? `/chat/${item.id}/` : `/start_chat/?user=${encodeURIComponent(item.username)}`;
+                const newBadge = isExistingChat ? '' : ' <span style="color:#00796b; font-weight:bold;">[New]</span>';
+
+                div.innerHTML = `<a href="${href}" style="text-decoration:none; color:black;">Chat with ${displayName}${newBadge}</a>`;
+                container.appendChild(div);
+            });
+        })
+        .catch(err => {
+            console.error(err);
+            container.innerHTML = `<div style="color:red;">Error loading results</div>`;
+        });
+}
+</script>
+{% endblock content %}

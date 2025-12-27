@@ -3,7 +3,8 @@
 {% block content %}
 <style>
 /* Einheitlicher Stil wie beim Chat */
-//body { margin:0; padding:0; font-family:sans-serif; height:100vh; background:#f5f5f5; display:flex; justify-content:center; align-items:center; }
+body { margin:0; padding:0; font-family:sans-serif; height:100vh;  display:flex; justify-content:center; align-items:center; }
+
 .login-container {
   background:#fff;
   padding:30px 40px;
@@ -12,30 +13,36 @@
   width:350px;
   text-align:center;
 }
+
 .login-container h2 {
   margin-bottom:20px;
   color:#333;
 }
+
 .login-container form {
   display:flex;
   flex-direction:column;
   gap:10px;
 }
+
 .login-container label {
   font-weight:600;
   color:#444;
   text-align:left;
 }
+
 .login-container input[type="text"] {
   padding:10px;
   border-radius:10px;
   border:1px solid #ccc;
   outline:none;
 }
+
 .login-container input[type="text"]:focus {
   border-color:#9cbeff;
   box-shadow:0 0 5px rgba(156,190,255,0.7);
 }
+
 button {
   padding:10px 15px;
   border:none;
@@ -46,13 +53,16 @@ button {
   margin-top:10px;
   transition:background-color 0.3s ease;
 }
+
 button:hover {
   background-color:#7da5ff;
 }
+
 .back-btn {
   background-color:#ccc;
   color:#333;
 }
+
 .back-btn:hover {
   background-color:#bbb;
 }
@@ -63,7 +73,8 @@ button:hover {
   <form method="post" action="{% url 'start_chat' %}">
     {% csrf_token %}
     <label for="username">Benutzername des Chat-Partners:</label>
-    <input type="text" id="username" name="username" required>
+    <!-- Prefill the username if passed from the view -->
+    <input type="text" id="username" name="username" value="{{ prefill_username }}" required>
     <button type="submit">Chat starten</button>
   </form>
   <button class="back-btn" onclick="window.location.href='{% url 'chat' %}'">Zurück zur Chat-Übersicht</button>

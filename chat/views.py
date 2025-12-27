@@ -59,6 +59,19 @@ def chat(request, id=None):
         "recipient_id": recipient_id,
     })
 
+def chat_selection(request):
+    """Zeigt eine Seite zur Auswahl eines Chats."""
+    user = request.user
+
+    # Liste aller Chats, bei denen der User beteiligt ist
+    user_chats = Chat.objects.filter(Q(user1=user) | Q(user2=user))
+
+    # Annotate each chat with the timestamp of its last message
+    user_chats = user_chats.annotate(last_msg_time=Max('messages__timestamp'))
+
+    return render(request, 'chat_selection.html', {
+        "chats": user_chats,
+    })
 
 def get_public_key(request, id):
     """Liefert den Public Key eines Users, falls vorhanden."""
@@ -108,7 +121,13 @@ def gif_list(request):
     return JsonResponse(data, safe=False)
 
 
+from django.shortcuts import render, redirect
+from django.contrib.auth.models import User
+from django.db.models import Q
+from .models import Chat, Message
+
 def start_chat(request):
+    # Check if the form was submitted
     if request.method == "POST":
         username = request.POST.get("username")
         if not username:
@@ -136,7 +155,10 @@ def start_chat(request):
             "user_chats": Chat.objects.filter(Q(user1=request.user) | Q(user2=request.user)),
         })
 
-    return render(request, 'start_chat.html', {})
+    # GET request — check if username was passed via URL
+    prefill_username = request.GET.get("user", "")
+    return render(request, 'start_chat.html', {"prefill_username": prefill_username})
+
 
 
 def activate_chat(request, chat_id):
@@ -220,3 +242,95 @@ def load_messages(request, chat_id):
         "messages": messages,
         "has_more": page_obj.has_next()
     })
+
+
+from django.apps import apps
+from django.forms.models import model_to_dict
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt  # optional if you’re calling via AJAX from JS
+def search(request, db_model, search_for):
+    """
+    Universal search view for any model and any field.
+
+    Parameters:
+    - db_model: Name of the model (e.g., 'User', 'Profile', 'Chat')
+    - search_for: Field name to search (e.g., 'username', 'nickname', 'title')
+
+    Returns:
+    - JSON response with results
+    """
+
+    query = request.GET.get('q', '').strip()
+    results = []
+
+    # Find the model in any installed app
+    model = None
+    for app_conf in apps.get_app_configs():
+        try:
+            model = app_conf.get_model(db_model)
+            break
+        except LookupError:
+            continue
+
+    if not model:
+        return JsonResponse({"results": [], "error": f"Model '{db_model}' not found."})
+
+    if query:
+        filter_kwargs = {f"{search_for}__icontains": query}
+        results = model.objects.filter(**filter_kwargs)
+
+    # Build universal JSON response
+    data = []
+    for obj in results:
+        obj_dict = model_to_dict(obj)
+        entry = {"id": obj_dict.get("id")}
+        # Include the field we searched for
+        if search_for in obj_dict:
+            entry[search_for] = obj_dict[search_for]
+        # Optionally include all other fields:
+        # entry.update(obj_dict)  
+        data.append(entry)
+
+    return JsonResponse({"results": data})
+
+from django.contrib.auth.models import User
+from django.http import JsonResponse
+from django.db.models import Q
+from .models import Chat
+from auth_man.models import Profile
+
+def search_chats_for_user(request):
+    """
+    Search for users for chat selection:
+    - If a chat exists with the current user, return the chat id.
+    - If no chat exists, return None (frontend can go to creation page).
+    """
+    query = request.GET.get("q", "").strip()
+    user = request.user
+    if not query:
+        return JsonResponse({"results": []})
+
+    # Find users by username or profile nickname
+    user_matches = User.objects.filter(
+        Q(username__icontains=query) |
+        Q(profile__nickname__icontains=query)  # use reverse FK lookup
+    ).exclude(id=user.id)
+
+    results = []
+    for u in user_matches:
+        # Check if a chat exists between the logged-in user and this user
+        chat = Chat.objects.filter(Q(user1=user, user2=u) | Q(user1=u, user2=user)).first()
+
+        # Get nickname from Profile if it exists
+        profile = Profile.objects.filter(user=u).first()
+        nickname = profile.nickname if profile else ""
+
+        results.append({
+            "id": chat.id if chat else None,  # chat exists?
+            "username": u.username,
+            "nickname": nickname,
+        })
+
+    return JsonResponse({"results": results})

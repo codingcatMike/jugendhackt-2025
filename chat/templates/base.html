@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Vergissmeinnicht{% endblock title %}</title>
     <meta name="description" content="JugendHackt Projekt">
-    <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}">
+    <link rel="icon" type="image/x-icon" href="{% static 'images/logo.png' %}">
     <style>
         * {
             box-sizing: border-box;
@@ -49,6 +49,7 @@
             justify-content: center;
             gap: 40px;
             z-index: 2;
+            height: 55px;   
         }
 
         nav a {
@@ -196,23 +197,33 @@
 
 </head>
 <body>
-    <nav>
-        <a href="{% url 'index' %}">Home</a>
-        <a href="{% url 'chat' %}">Messenger</a>
-        {% if not request.user.is_authenticated %}
+<nav style="display: flex; align-items: center; gap: 20px; padding: 10px;">
+    <!-- Logo -->
+    <a href="{% url 'index' %}">
+        <img src="{% static 'images/logo.png' %}" alt="Logo" style="width: 3%;">
+    </a>
+
+    <!-- Navigation Links -->
+    <a href="{% url 'chat' %}">Messenger</a>
+
+    {% if not request.user.is_authenticated %}
         <a href="{% url 'login' %}">Login</a>
         <a href="{% url 'signup' %}">Signup</a>
-        {% else %}
-        <a href="{% url 'logoutn' %}">Logout as {{request.user.username}} {% with user.profile_set.first as profile %}
-    {% if profile %}
-        🪙 {{ profile.coins }}
     {% else %}
-        Coins: 0
+        <!-- Logout with username -->
+        <a href="{% url 'logoutn' %}">Logout ({{ request.user.username }})</a>
+
+        <!-- Coins display -->
+        {% with user.profile_set.first as profile %}
+            {% if profile %}
+                <span style="color: white">🪙 {{ profile.coins }}</span>
+            {% else %}
+                <span style="color: white">🪙 0</span>
+            {% endif %}
+        {% endwith %}
     {% endif %}
-{% endwith %}
-</a>
-        {% endif %}
-    </nav>
+</nav>
+
 
     {% block content %}{% endblock content %}
 
